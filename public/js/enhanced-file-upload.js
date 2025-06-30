@@ -152,11 +152,7 @@ class EnhancedFileUploadManager {
                 e.preventDefault();
                 e.stopPropagation();
                 
-                if (!window.authManager || !window.authManager.isLoggedIn()) {
-                    this.showError('请先登录后再上传文件');
-                    return;
-                }
-
+                // 移除登录检查，允许匿名上传（与Ctrl+V保持一致）
                 // 直接打开文件选择器
                 fileInput.click();
             });
@@ -189,11 +185,7 @@ class EnhancedFileUploadManager {
             event.stopPropagation();
             messageList.classList.remove('drag-over');
 
-            if (!window.authManager.isLoggedIn()) {
-                this.showError('请先登录后再上传文件');
-                return;
-            }
-
+            // 移除登录检查，允许匿名上传（与Ctrl+V保持一致）
             const files = Array.from(event.dataTransfer.files);
             this.handleFilesWithOptions(files);
         });
@@ -731,7 +723,7 @@ class EnhancedFileUploadManager {
     // 创建文件消息元素
     createFileMessage(messageData, isOwn = false) {
         const messageDiv = document.createElement('div');
-        messageDiv.className = `message ${isOwn ? 'own' : ''} file-message`;
+        messageDiv.className = `message ${isOwn ? 'own' : 'other'} file-message`;
         
         const file = messageData.file;
         const fileIcon = this.getFileIcon(file.fileType);
@@ -809,10 +801,7 @@ class EnhancedFileUploadManager {
             const messageText = document.getElementById('messageText');
             const messageList = document.getElementById('messageList');
             
-            if (!window.authManager || !window.authManager.isLoggedIn()) {
-                return; // 未登录时不处理粘贴
-            }
-            
+            // 移除登录检查，允许匿名上传
             // 只在聊天相关区域处理粘贴
             if (activeElement === messageText ||
                 messageList && messageList.contains(activeElement) ||

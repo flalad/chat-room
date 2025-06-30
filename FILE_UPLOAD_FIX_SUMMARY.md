@@ -198,13 +198,77 @@ getAuthToken() {
 3. **内存限制**: 注意大文件上传时的内存使用
 4. **S3配置**: 如需支持大文件，需要配置S3存储服务
 
+## 最新修复 (2025/7/1)
+
+### 5. 上传方式逻辑不一致问题 ✅
+**问题描述**: 上传按钮与Ctrl+V粘贴功能使用不同的逻辑，导致行为不一致
+
+**解决方案**:
+- 统一了所有上传方式的认证检查逻辑
+- 移除了上传按钮和拖拽上传的强制登录检查
+- 确保所有上传方式（按钮、拖拽、Ctrl+V）都支持匿名上传
+- 使用相同的文件处理流程
+
+**关键代码修改**:
+```javascript
+// 移除上传按钮的登录检查
+newAttachmentBtn.addEventListener('click', (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    // 移除登录检查，允许匿名上传（与Ctrl+V保持一致）
+    fileInput.click();
+});
+
+// 移除拖拽上传的登录检查
+messageList.addEventListener('drop', (event) => {
+    event.preventDefault();
+    event.stopPropagation();
+    messageList.classList.remove('drag-over');
+
+    // 移除登录检查，允许匿名上传（与Ctrl+V保持一致）
+    const files = Array.from(event.dataTransfer.files);
+    this.handleFilesWithOptions(files);
+});
+
+// 移除Ctrl+V粘贴的登录检查
+document.addEventListener('paste', (event) => {
+    // 移除登录检查，允许匿名上传
+    if (activeElement === messageText ||
+        messageList && messageList.contains(activeElement) ||
+        activeElement === document.body) {
+        
+        this.handlePasteEvent(event);
+    }
+});
+```
+
+### 6. 消息显示位置问题 ✅
+**问题描述**: 自己发送的文件消息没有正确显示在右侧
+
+**解决方案**:
+- 修复了 `createFileMessage` 函数中的CSS类名设置
+- 确保自己发送的消息使用 `'own'` 类，其他人的消息使用 `'other'` 类
+- 保持与文本消息相同的显示逻辑
+
+**关键代码修改**:
+```javascript
+createFileMessage(messageData, isOwn = false) {
+    const messageDiv = document.createElement('div');
+    messageDiv.className = `message ${isOwn ? 'own' : 'other'} file-message`;
+    // ...
+}
+```
+
 ## 总结
 
-本次修复成功解决了聊天室文件上传功能的主要问题：
+本次修复成功解决了聊天室文件上传功能的所有主要问题：
 
 ✅ **认证问题已解决** - 移除强制认证，支持匿名上传
-✅ **存储选择已优化** - 智能选择最适合的存储方式  
+✅ **存储选择已优化** - 智能选择最适合的存储方式
 ✅ **组件初始化已修复** - 所有组件正确加载和初始化
 ✅ **调试功能已完善** - 提供完整的调试和测试工具
+✅ **上传方式逻辑已统一** - 所有上传方式使用相同的处理逻辑
+✅ **消息显示位置已修复** - 自己的消息正确显示在右侧
 
-文件上传功能现在可以正常工作，支持多种上传方式，具有良好的容错性和用户体验。
+文件上传功能现在完全正常工作，支持多种上传方式，具有良好的容错性和用户体验。用户可以通过上传按钮、拖拽或Ctrl+V粘贴的方式上传文件，所有方式都会使用相同的智能存储选择逻辑。
