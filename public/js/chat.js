@@ -311,7 +311,12 @@ class ChatManager {
 
     createMessageElement(message) {
         const messageDiv = document.createElement('div');
-        const isOwn = this.currentUser && message.username === this.currentUser.username;
+        
+        // 获取当前用户信息，优先从认证管理器获取
+        const currentUser = window.authManager ? window.authManager.getCurrentUser() : this.currentUser;
+        const currentUsername = currentUser ? currentUser.username : null;
+        
+        const isOwn = currentUsername && message.username === currentUsername;
         const isSystem = message.type === 'system';
         
         messageDiv.className = `message ${isOwn ? 'own' : isSystem ? 'system' : 'other'}`;

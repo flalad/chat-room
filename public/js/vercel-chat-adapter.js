@@ -12,6 +12,11 @@ class VercelChatAdapter {
     async initChat(user) {
         this.currentUser = user;
         
+        // 确保聊天管理器也有用户信息
+        if (window.chatManager) {
+            window.chatManager.currentUser = user;
+        }
+        
         try {
             // 加载历史消息
             await this.loadMessageHistory();
@@ -22,7 +27,7 @@ class VercelChatAdapter {
             // 更新连接状态
             this.updateConnectionStatus('connected');
             
-            console.log('✅ Vercel聊天适配器已初始化');
+            console.log('✅ Vercel聊天适配器已初始化，用户:', user.username);
             this.showSuccess('聊天功能已启用（HTTP模式）');
             
         } catch (error) {
@@ -160,6 +165,11 @@ class VercelChatAdapter {
     // 处理新消息
     handleNewMessage(message) {
         if (window.chatManager && window.chatManager.addMessageToUI) {
+            // 确保聊天管理器有当前用户信息
+            if (!window.chatManager.currentUser && window.authManager) {
+                window.chatManager.currentUser = window.authManager.getCurrentUser();
+            }
+            
             window.chatManager.addMessageToUI(message);
         }
         
@@ -170,6 +180,11 @@ class VercelChatAdapter {
     // 处理历史消息
     handleMessageHistory(messages) {
         if (window.chatManager) {
+            // 确保聊天管理器有当前用户信息
+            if (!window.chatManager.currentUser && window.authManager) {
+                window.chatManager.currentUser = window.authManager.getCurrentUser();
+            }
+            
             window.chatManager.messages = messages;
             if (window.chatManager.renderAllMessages) {
                 window.chatManager.renderAllMessages();
