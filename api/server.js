@@ -93,6 +93,10 @@ const systemSettings = {
     storageLimit: 0 // 0 = 无限制，单位：字节
 };
 
+// S3配置存储（内存中，生产环境应使用数据库）
+const s3Configs = new Map();
+let s3ConfigIdCounter = 1;
+
 // JWT中间件
 const authenticateToken = (req, res, next) => {
     const authHeader = req.headers['authorization'];
@@ -526,42 +530,379 @@ app.post('/api/admin/s3-config', authenticateAdmin, (req, res) => {
     }
 });
 
-app.post('/api/admin/test-s3', authenticateAdmin, async (req, res) => {
+// 测试S3配置连接的辅助函数
+async function testS3ConfigConnection(config) {
     try {
-        const { provider, endpoint, bucket, region, accessKey, secretKey } = req.body;
-
-        // 验证必填字段
-        if (!provider || !endpoint || !bucket || !region || !accessKey || !secretKey) {
-            return res.status(400).json({ message: '请填写完整的S3配置信息' });
-        }
-
         // 配置AWS SDK
         const s3 = new AWS.S3({
-            endpoint: new AWS.Endpoint(endpoint),
-            accessKeyId: accessKey,
-            secretAccessKey: secretKey,
-            region: region,
+            endpoint: new AWS.Endpoint(config.endpoint),
+            accessKeyId: config.accessKey,
+            secretAccessKey: config.secretKey,
+            region: config.region,
             s3ForcePathStyle: true,
             signatureVersion: 'v4'
         });
 
-        // 测试连接
-        try {
-            await s3.headBucket({ Bucket: bucket }).promise();
-            res.json({
-                success: true,
-                message: 'S3连接测试成功'
-            });
-        } catch (error) {
-            console.error('S3连接测试失败:', error);
-            res.json({
-                success: false,
-                message: `连接测试失败: ${error.message}`
-            });
+        // 1. 测试存储桶访问
+        await s3.headBucket({ Bucket: config.bucket }).promise();
+
+        // 2. 测试文件上传
+        const testFileName = `test-${Date.now()}.txt`;
+        const testKey = `${config.directory || 'chat-files/'}${testFileName}`;
+        const testContent = 'This is a test file for S3 connection verification.';
+
+        await s3.putObject({
+            Bucket: config.bucket,
+            Key: testKey,
+            Body: testContent,
+            ContentType: 'text/plain'
+        }).promise();
+
+        // 3. 测试文件读取
+        await s3.getObject({
+            Bucket: config.bucket,
+            Key: testKey
+        }).promise();
+
+        // 4. 删除测试文件
+        await s3.deleteObject({
+            Bucket: config.bucket,
+            Key: testKey
+        }).promise();
+
+        return {
+            success: true,
+            message: 'S3连接测试成功！文件上传、读取和删除测试通过。'
+        };
+
+    } catch (error) {
+        console.error('S3连接测试失败:', error);
+        return {
+            success: false,
+            message: `连接测试失败: ${error.message}`
+        };
+    }
+}
+
+app.post('/api/admin/test-s3', authenticateAdmin, async (req, res) => {
+    try {
+        const { provider, endpoint, bucket, region, accessKey, secretKey, directory } = req.body;
+
+        // 验证必填字段
+        const requiresEndpoint = ['cloudflare', 'minio', 'other', 'aliyun', 'tencent', 'qiniu'];
+        if (!provider || !bucket || !region || !accessKey || !secretKey) {
+            return res.status(400).json({ message: '请填写完整的S3配置信息' });
         }
+
+        if (requiresEndpoint.includes(provider) && !endpoint) {
+            return res.status(400).json({ message: '该存储提供商需要填写自定义端点' });
+        }
+
+        // 设置默认端点
+        let finalEndpoint = endpoint;
+        if (!finalEndpoint && provider === 'aws') {
+            finalEndpoint = `https://s3.${region}.amazonaws.com`;
+        }
+
+        const testConfig = {
+            provider,
+            endpoint: finalEndpoint,
+            bucket,
+            region,
+            accessKey,
+            secretKey,
+            directory: directory || 'chat-files/'
+        };
+
+        const result = await testS3ConfigConnection(testConfig);
+        res.json(result);
 
     } catch (error) {
         console.error('S3测试错误:', error);
+        res.status(500).json({ message: '服务器内部错误' });
+    }
+});
+
+// S3配置管理API
+// 获取所有S3配置
+app.get('/api/admin/s3-configs', authenticateAdmin, (req, res) => {
+    try {
+        const configs = Array.from(s3Configs.values()).map(config => ({
+            ...config,
+            // 不返回敏感信息
+            accessKey: config.accessKey ? config.accessKey.substring(0, 8) + '***' : '',
+            secretKey: '***'
+        }));
+        
+        res.json({ configs });
+    } catch (error) {
+        console.error('获取S3配置列表错误:', error);
+        res.status(500).json({ message: '服务器内部错误' });
+    }
+});
+
+// 获取单个S3配置
+app.get('/api/admin/s3-configs/:id', authenticateAdmin, (req, res) => {
+    try {
+        const configId = req.params.id;
+        const config = s3Configs.get(configId);
+        
+        if (!config) {
+            return res.status(404).json({ message: '配置不存在' });
+        }
+        
+        res.json({ data: config });
+    } catch (error) {
+        console.error('获取S3配置错误:', error);
+        res.status(500).json({ message: '服务器内部错误' });
+    }
+});
+
+// 创建S3配置
+app.post('/api/admin/s3-configs', authenticateAdmin, (req, res) => {
+    try {
+        const {
+            configName,
+            provider,
+            endpoint,
+            bucket,
+            region,
+            accessKey,
+            secretKey,
+            directory,
+            storageLimit,
+            enableCDN,
+            isDefault
+        } = req.body;
+
+        // 验证必填字段
+        if (!configName || !provider || !bucket || !region || !accessKey || !secretKey) {
+            return res.status(400).json({ message: '请填写完整的S3配置信息' });
+        }
+
+        // 对于某些提供商，端点是必需的
+        const requiresEndpoint = ['cloudflare', 'minio', 'other', 'aliyun', 'tencent', 'qiniu'];
+        if (requiresEndpoint.includes(provider) && !endpoint) {
+            return res.status(400).json({ message: '该存储提供商需要填写自定义端点' });
+        }
+
+        // 设置默认端点
+        let finalEndpoint = endpoint;
+        if (!finalEndpoint && provider === 'aws') {
+            finalEndpoint = `https://s3.${region}.amazonaws.com`;
+        }
+
+        const configId = `s3_${s3ConfigIdCounter++}`;
+        const newConfig = {
+            id: configId,
+            configName,
+            provider,
+            endpoint: finalEndpoint,
+            bucket,
+            region,
+            accessKey,
+            secretKey,
+            directory: directory || 'chat-files/',
+            storageLimit: parseInt(storageLimit) || 0,
+            enableCDN: enableCDN === 'on' || enableCDN === true,
+            isDefault: isDefault === 'on' || isDefault === true,
+            status: 'unknown',
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString()
+        };
+
+        // 如果设为默认，取消其他配置的默认状态
+        if (newConfig.isDefault) {
+            for (const [id, config] of s3Configs.entries()) {
+                if (config.isDefault) {
+                    config.isDefault = false;
+                    s3Configs.set(id, config);
+                }
+            }
+            // 更新系统默认配置
+            systemSettings.s3Config = newConfig;
+        }
+
+        s3Configs.set(configId, newConfig);
+
+        res.json({
+            message: 'S3配置创建成功',
+            config: {
+                id: configId,
+                configName,
+                provider,
+                bucket,
+                region
+            }
+        });
+
+    } catch (error) {
+        console.error('创建S3配置错误:', error);
+        res.status(500).json({ message: '服务器内部错误' });
+    }
+});
+
+// 更新S3配置
+app.put('/api/admin/s3-configs/:id', authenticateAdmin, (req, res) => {
+    try {
+        const configId = req.params.id;
+        const existingConfig = s3Configs.get(configId);
+        
+        if (!existingConfig) {
+            return res.status(404).json({ message: '配置不存在' });
+        }
+
+        const {
+            configName,
+            provider,
+            endpoint,
+            bucket,
+            region,
+            accessKey,
+            secretKey,
+            directory,
+            storageLimit,
+            enableCDN,
+            isDefault
+        } = req.body;
+
+        // 验证必填字段
+        if (!configName || !provider || !bucket || !region || !accessKey) {
+            return res.status(400).json({ message: '请填写完整的S3配置信息' });
+        }
+
+        // 设置默认端点
+        let finalEndpoint = endpoint;
+        if (!finalEndpoint && provider === 'aws') {
+            finalEndpoint = `https://s3.${region}.amazonaws.com`;
+        }
+
+        const updatedConfig = {
+            ...existingConfig,
+            configName,
+            provider,
+            endpoint: finalEndpoint,
+            bucket,
+            region,
+            accessKey,
+            secretKey: secretKey || existingConfig.secretKey, // 如果没有提供新密钥，保持原有
+            directory: directory || 'chat-files/',
+            storageLimit: parseInt(storageLimit) || 0,
+            enableCDN: enableCDN === 'on' || enableCDN === true,
+            isDefault: isDefault === 'on' || isDefault === true,
+            updatedAt: new Date().toISOString()
+        };
+
+        // 如果设为默认，取消其他配置的默认状态
+        if (updatedConfig.isDefault) {
+            for (const [id, config] of s3Configs.entries()) {
+                if (id !== configId && config.isDefault) {
+                    config.isDefault = false;
+                    s3Configs.set(id, config);
+                }
+            }
+            // 更新系统默认配置
+            systemSettings.s3Config = updatedConfig;
+        }
+
+        s3Configs.set(configId, updatedConfig);
+
+        res.json({
+            message: 'S3配置更新成功',
+            config: {
+                id: configId,
+                configName,
+                provider,
+                bucket,
+                region
+            }
+        });
+
+    } catch (error) {
+        console.error('更新S3配置错误:', error);
+        res.status(500).json({ message: '服务器内部错误' });
+    }
+});
+
+// 删除S3配置
+app.delete('/api/admin/s3-configs/:id', authenticateAdmin, (req, res) => {
+    try {
+        const configId = req.params.id;
+        const config = s3Configs.get(configId);
+        
+        if (!config) {
+            return res.status(404).json({ message: '配置不存在' });
+        }
+
+        if (config.isDefault) {
+            return res.status(400).json({ message: '不能删除默认配置，请先设置其他配置为默认' });
+        }
+
+        s3Configs.delete(configId);
+        
+        res.json({ message: 'S3配置删除成功' });
+
+    } catch (error) {
+        console.error('删除S3配置错误:', error);
+        res.status(500).json({ message: '服务器内部错误' });
+    }
+});
+
+// 设置默认S3配置
+app.post('/api/admin/s3-configs/:id/set-default', authenticateAdmin, (req, res) => {
+    try {
+        const configId = req.params.id;
+        const config = s3Configs.get(configId);
+        
+        if (!config) {
+            return res.status(404).json({ message: '配置不存在' });
+        }
+
+        // 取消其他配置的默认状态
+        for (const [id, cfg] of s3Configs.entries()) {
+            if (cfg.isDefault) {
+                cfg.isDefault = false;
+                s3Configs.set(id, cfg);
+            }
+        }
+
+        // 设置当前配置为默认
+        config.isDefault = true;
+        s3Configs.set(configId, config);
+        
+        // 更新系统默认配置
+        systemSettings.s3Config = config;
+        
+        res.json({ message: '默认配置设置成功' });
+
+    } catch (error) {
+        console.error('设置默认配置错误:', error);
+        res.status(500).json({ message: '服务器内部错误' });
+    }
+});
+
+// 测试指定S3配置
+app.post('/api/admin/s3-configs/:id/test', authenticateAdmin, async (req, res) => {
+    try {
+        const configId = req.params.id;
+        const config = s3Configs.get(configId);
+        
+        if (!config) {
+            return res.status(404).json({ message: '配置不存在' });
+        }
+
+        // 测试连接并更新状态
+        const testResult = await testS3ConfigConnection(config);
+        
+        // 更新配置状态
+        config.status = testResult.success ? 'connected' : 'error';
+        config.lastTested = new Date().toISOString();
+        s3Configs.set(configId, config);
+        
+        res.json(testResult);
+
+    } catch (error) {
+        console.error('测试S3配置错误:', error);
         res.status(500).json({ message: '服务器内部错误' });
     }
 });

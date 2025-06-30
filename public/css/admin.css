@@ -850,6 +850,170 @@
     box-shadow: 0 4px 8px rgba(237, 137, 54, 0.3);
 }
 
+/* S3配置卡片样式 */
+.s3-config-list {
+    display: grid;
+    gap: 20px;
+}
+
+.s3-config-card {
+    background: white;
+    border-radius: 12px;
+    padding: 20px;
+    border: 2px solid #e2e8f0;
+    transition: all 0.3s ease;
+    position: relative;
+}
+
+.s3-config-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
+}
+
+.s3-config-card.default {
+    border-color: #48bb78;
+    background: linear-gradient(135deg, #f0fff4 0%, #c6f6d5 100%);
+}
+
+.config-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 16px;
+}
+
+.config-info h4.config-name {
+    font-size: 18px;
+    font-weight: 600;
+    color: #2d3748;
+    margin: 0 0 8px 0;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.default-badge {
+    background: #48bb78;
+    color: white;
+    font-size: 10px;
+    font-weight: 500;
+    padding: 2px 6px;
+    border-radius: 4px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.config-details {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    align-items: center;
+}
+
+.provider-badge {
+    background: #667eea;
+    color: white;
+    font-size: 11px;
+    font-weight: 500;
+    padding: 3px 8px;
+    border-radius: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+}
+
+.provider-aws { background: #ff9900; }
+.provider-cloudflare { background: #f38020; }
+.provider-aliyun { background: #ff6a00; }
+.provider-tencent { background: #006eff; }
+.provider-qiniu { background: #00d4aa; }
+.provider-minio { background: #c72e49; }
+.provider-other { background: #718096; }
+
+.config-bucket, .config-region {
+    font-size: 12px;
+    color: #718096;
+    background: #f7fafc;
+    padding: 2px 6px;
+    border-radius: 4px;
+}
+
+.config-status .status-indicator {
+    font-size: 16px;
+    padding: 0;
+    background: none;
+    border-radius: 0;
+}
+
+.config-stats {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+    gap: 12px;
+    margin-bottom: 16px;
+    padding: 12px;
+    background: rgba(247, 250, 252, 0.5);
+    border-radius: 8px;
+}
+
+.stat-item {
+    text-align: center;
+}
+
+.stat-item .stat-label {
+    font-size: 11px;
+    color: #718096;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 4px;
+    display: block;
+    font-weight: 600;
+}
+
+.stat-item .stat-value {
+    font-size: 13px;
+    font-weight: 600;
+    color: #2d3748;
+}
+
+.config-actions {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.config-actions .btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 12px;
+    padding: 6px 10px;
+}
+
+.config-actions .btn svg {
+    fill: currentColor;
+}
+
+.empty-state {
+    text-align: center;
+    padding: 40px 20px;
+    color: #718096;
+}
+
+.empty-state .empty-icon {
+    font-size: 48px;
+    margin-bottom: 16px;
+    display: block;
+}
+
+.empty-state p {
+    margin: 8px 0;
+    font-size: 14px;
+}
+
+.empty-state p:first-of-type {
+    font-weight: 600;
+    color: #4a5568;
+}
+
 /* 响应式调整 */
 @media (max-width: 768px) {
     .storage-stats {
@@ -867,5 +1031,19 @@
     
     .storage-actions {
         flex-direction: column;
+    }
+    
+    .config-header {
+        flex-direction: column;
+        gap: 12px;
+    }
+    
+    .config-actions {
+        justify-content: center;
+    }
+    
+    .config-stats {
+        grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
+        gap: 8px;
     }
 }

@@ -339,9 +339,15 @@ class AdminPanel {
         const mainContent = document.getElementById('mainContent');
         mainContent.innerHTML = `
             <div class="form-section">
-                <h3 class="section-title">S3存储配置</h3>
+                <h3 class="section-title">添加S3存储配置</h3>
                 <form id="s3ConfigForm">
+                    <input type="hidden" id="configId" name="configId">
                     <div class="form-row">
+                        <div class="form-group-admin">
+                            <label for="configName">配置名称</label>
+                            <input type="text" id="configName" name="configName" required placeholder="如: 主存储、备份存储">
+                            <small class="form-help">为这个存储配置起一个便于识别的名称</small>
+                        </div>
                         <div class="form-group-admin">
                             <label for="s3Provider">存储提供商</label>
                             <select id="s3Provider" name="provider" required onchange="adminPanel.handleProviderChange()">
@@ -355,10 +361,18 @@ class AdminPanel {
                                 <option value="other">其他S3兼容服务</option>
                             </select>
                         </div>
+                    </div>
+                    
+                    <div class="form-row">
                         <div class="form-group-admin">
                             <label for="s3Region">区域</label>
                             <input type="text" id="s3Region" name="region" placeholder="如: us-east-1">
                             <small class="form-help" id="regionHelp">根据选择的提供商，区域格式可能不同</small>
+                        </div>
+                        <div class="form-group-admin">
+                            <label for="s3Bucket">存储桶名称</label>
+                            <input type="text" id="s3Bucket" name="bucket" required>
+                            <small class="form-help">存储桶必须已经存在</small>
                         </div>
                     </div>
                     
@@ -377,32 +391,24 @@ class AdminPanel {
                     
                     <div class="form-row">
                         <div class="form-group-admin">
-                            <label for="s3Bucket">存储桶名称</label>
-                            <input type="text" id="s3Bucket" name="bucket" required>
-                            <small class="form-help">存储桶必须已经存在</small>
-                        </div>
-                        <div class="form-group-admin">
                             <label for="s3Endpoint">自定义端点</label>
                             <input type="url" id="s3Endpoint" name="endpoint" placeholder="https://s3.example.com">
                             <small class="form-help" id="endpointHelp">某些提供商需要自定义端点</small>
                         </div>
-                    </div>
-                    
-                    <div class="form-row">
                         <div class="form-group-admin">
                             <label for="s3Directory">存储目录 (可选)</label>
                             <input type="text" id="s3Directory" name="directory" placeholder="chat-files/" value="chat-files/">
                             <small class="form-help">文件存储的子目录，以/结尾</small>
                         </div>
+                    </div>
+                    
+                    <div class="form-row">
                         <div class="form-group-admin">
                             <label for="storageLimit">存储容量限制 (MB)</label>
                             <input type="number" id="storageLimit" name="storageLimit" min="0" placeholder="0 = 无限制">
                             <small class="form-help">0表示无限制，设置后将限制总存储使用量</small>
                         </div>
-                    </div>
-                    
-                    <div class="form-row">
-                        <div class="form-group-admin full-width">
+                        <div class="form-group-admin">
                             <label>
                                 <input type="checkbox" id="enableCDN" name="enableCDN">
                                 启用CDN加速 (如果支持)
@@ -411,11 +417,29 @@ class AdminPanel {
                         </div>
                     </div>
                     
+                    <div class="form-row">
+                        <div class="form-group-admin full-width">
+                            <label>
+                                <input type="checkbox" id="isDefault" name="isDefault">
+                                设为默认存储
+                            </label>
+                            <small class="form-help">新上传的文件将使用默认存储</small>
+                        </div>
+                    </div>
+                    
                     <div class="button-group">
                         <button type="button" class="btn btn-secondary" onclick="adminPanel.testS3Connection()">测试连接</button>
-                        <button type="submit" class="btn btn-success">保存配置</button>
+                        <button type="submit" class="btn btn-success" id="saveConfigBtn">保存配置</button>
+                        <button type="button" class="btn btn-warning" id="cancelEditBtn" onclick="adminPanel.cancelEdit()" style="display: none;">取消编辑</button>
                     </div>
                 </form>
+            </div>
+            
+            <div class="form-section" style="margin-top: 2rem;">
+                <h3 class="section-title">已配置的存储</h3>
+                <div id="s3ConfigList" class="s3-config-list">
+                    <div class="loading-spinner"></div> 正在加载存储配置...
+                </div>
             </div>
             
             <div class="form-section" style="margin-top: 2rem;">
@@ -427,11 +451,259 @@ class AdminPanel {
         `;
 
         // 加载现有配置
-        this.loadS3ConfigData();
+        this.loadS3ConfigList();
         this.loadStorageUsage();
 
         // 绑定表单提交事件
         document.getElementById('s3ConfigForm').addEventListener('submit', (e) => this.saveS3Config(e));
+    }
+
+    // 加载S3配置列表
+    async loadS3ConfigList() {
+        try {
+            const response = await fetch('/api/admin/s3-configs', {
+                headers: {
+                    'Authorization': `Bearer ${this.adminToken}`
+                }
+            });
+
+            if (response.ok) {
+                const data = await response.json();
+                this.renderS3ConfigList(data.configs || []);
+            } else {
+                document.getElementById('s3ConfigList').innerHTML = '<p>加载存储配置失败</p>';
+            }
+        } catch (error) {
+            console.error('加载S3配置列表失败:', error);
+            document.getElementById('s3ConfigList').innerHTML = '<p>加载失败</p>';
+        }
+    }
+
+    // 渲染S3配置列表
+    renderS3ConfigList(configs) {
+        const listEl = document.getElementById('s3ConfigList');
+        
+        if (configs.length === 0) {
+            listEl.innerHTML = `
+                <div class="empty-state">
+                    <div class="empty-icon">☁️</div>
+                    <p>还没有配置任何存储服务</p>
+                    <p>请在上方添加您的第一个存储配置</p>
+                </div>
+            `;
+            return;
+        }
+
+        listEl.innerHTML = configs.map(config => `
+            <div class="s3-config-card ${config.isDefault ? 'default' : ''}" data-config-id="${config.id}">
+                <div class="config-header">
+                    <div class="config-info">
+                        <h4 class="config-name">
+                            ${this.escapeHtml(config.configName)}
+                            ${config.isDefault ? '<span class="default-badge">默认</span>' : ''}
+                        </h4>
+                        <div class="config-details">
+                            <span class="provider-badge provider-${config.provider}">${this.getProviderName(config.provider)}</span>
+                            <span class="config-bucket">${this.escapeHtml(config.bucket)}</span>
+                            <span class="config-region">${this.escapeHtml(config.region)}</span>
+                        </div>
+                    </div>
+                    <div class="config-status">
+                        <span class="status-indicator ${config.status || 'unknown'}" title="连接状态">
+                            ${config.status === 'connected' ? '✅' : config.status === 'error' ? '❌' : '❓'}
+                        </span>
+                    </div>
+                </div>
+                
+                <div class="config-stats">
+                    <div class="stat-item">
+                        <span class="stat-label">存储限制</span>
+                        <span class="stat-value">${config.storageLimit > 0 ? this.formatFileSize(config.storageLimit * 1024 * 1024) : '无限制'}</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-label">CDN加速</span>
+                        <span class="stat-value">${config.enableCDN ? '已启用' : '未启用'}</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-label">创建时间</span>
+                        <span class="stat-value">${this.formatDate(config.createdAt)}</span>
+                    </div>
+                </div>
+                
+                <div class="config-actions">
+                    <button class="btn btn-sm btn-secondary" onclick="adminPanel.testS3Config('${config.id}')" title="测试连接">
+                        <svg viewBox="0 0 24 24" width="14" height="14">
+                            <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
+                        </svg>
+                        测试
+                    </button>
+                    <button class="btn btn-sm btn-primary" onclick="adminPanel.editS3Config('${config.id}')" title="编辑配置">
+                        <svg viewBox="0 0 24 24" width="14" height="14">
+                            <path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/>
+                        </svg>
+                        编辑
+                    </button>
+                    ${!config.isDefault ? `
+                    <button class="btn btn-sm btn-success" onclick="adminPanel.setDefaultS3Config('${config.id}')" title="设为默认">
+                        <svg viewBox="0 0 24 24" width="14" height="14">
+                            <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
+                        </svg>
+                        设为默认
+                    </button>
+                    ` : ''}
+                    <button class="btn btn-sm btn-danger" onclick="adminPanel.deleteS3Config('${config.id}')" title="删除配置">
+                        <svg viewBox="0 0 24 24" width="14" height="14">
+                            <path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/>
+                        </svg>
+                        删除
+                    </button>
+                </div>
+            </div>
+        `).join('');
+    }
+
+    // 获取提供商显示名称
+    getProviderName(provider) {
+        const names = {
+            'aws': 'Amazon S3',
+            'cloudflare': 'Cloudflare R2',
+            'aliyun': '阿里云OSS',
+            'tencent': '腾讯云COS',
+            'qiniu': '七牛云',
+            'minio': 'MinIO',
+            'other': '其他S3兼容'
+        };
+        return names[provider] || provider;
+    }
+
+    // 编辑S3配置
+    async editS3Config(configId) {
+        try {
+            const response = await fetch(`/api/admin/s3-configs/${configId}`, {
+                headers: {
+                    'Authorization': `Bearer ${this.adminToken}`
+                }
+            });
+
+            if (response.ok) {
+                const config = await response.json();
+                this.fillS3ConfigForm(config.data);
+                document.getElementById('saveConfigBtn').textContent = '更新配置';
+                document.getElementById('cancelEditBtn').style.display = 'inline-flex';
+                
+                // 滚动到表单
+                document.getElementById('s3ConfigForm').scrollIntoView({ behavior: 'smooth' });
+            } else {
+                this.showMessage('加载配置失败', 'error');
+            }
+        } catch (error) {
+            console.error('编辑S3配置失败:', error);
+            this.showMessage('加载配置失败', 'error');
+        }
+    }
+
+    // 填充S3配置表单
+    fillS3ConfigForm(config) {
+        document.getElementById('configId').value = config.id || '';
+        document.getElementById('configName').value = config.configName || '';
+        document.getElementById('s3Provider').value = config.provider || '';
+        document.getElementById('s3Region').value = config.region || '';
+        document.getElementById('s3Bucket').value = config.bucket || '';
+        document.getElementById('s3AccessKey').value = config.accessKey || '';
+        document.getElementById('s3SecretKey').value = ''; // 不显示密钥
+        document.getElementById('s3Endpoint').value = config.endpoint || '';
+        document.getElementById('s3Directory').value = config.directory || '';
+        document.getElementById('storageLimit').value = config.storageLimit || '';
+        document.getElementById('enableCDN').checked = config.enableCDN || false;
+        document.getElementById('isDefault').checked = config.isDefault || false;
+        
+        // 触发提供商变化事件
+        this.handleProviderChange();
+    }
+
+    // 取消编辑
+    cancelEdit() {
+        document.getElementById('s3ConfigForm').reset();
+        document.getElementById('configId').value = '';
+        document.getElementById('saveConfigBtn').textContent = '保存配置';
+        document.getElementById('cancelEditBtn').style.display = 'none';
+        document.getElementById('s3Directory').value = 'chat-files/';
+    }
+
+    // 设置默认S3配置
+    async setDefaultS3Config(configId) {
+        try {
+            const response = await fetch(`/api/admin/s3-configs/${configId}/set-default`, {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${this.adminToken}`
+                }
+            });
+
+            if (response.ok) {
+                this.showMessage('默认存储设置成功', 'success');
+                this.loadS3ConfigList(); // 重新加载列表
+            } else {
+                const result = await response.json();
+                this.showMessage(result.message || '设置失败', 'error');
+            }
+        } catch (error) {
+            console.error('设置默认存储失败:', error);
+            this.showMessage('设置失败', 'error');
+        }
+    }
+
+    // 删除S3配置
+    async deleteS3Config(configId) {
+        if (!confirm('确定要删除这个存储配置吗？此操作不可恢复。')) {
+            return;
+        }
+
+        try {
+            const response = await fetch(`/api/admin/s3-configs/${configId}`, {
+                method: 'DELETE',
+                headers: {
+                    'Authorization': `Bearer ${this.adminToken}`
+                }
+            });
+
+            if (response.ok) {
+                this.showMessage('存储配置删除成功', 'success');
+                this.loadS3ConfigList(); // 重新加载列表
+            } else {
+                const result = await response.json();
+                this.showMessage(result.message || '删除失败', 'error');
+            }
+        } catch (error) {
+            console.error('删除存储配置失败:', error);
+            this.showMessage('删除失败', 'error');
+        }
+    }
+
+    // 测试指定的S3配置
+    async testS3Config(configId) {
+        this.showMessage('正在测试连接...', 'info');
+
+        try {
+            const response = await fetch(`/api/admin/s3-configs/${configId}/test`, {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${this.adminToken}`
+                }
+            });
+
+            const result = await response.json();
+
+            if (response.ok && result.success) {
+                this.showMessage('连接测试成功！', 'success');
+                this.loadS3ConfigList(); // 重新加载列表以更新状态
+            } else {
+                this.showMessage(result.message || '连接测试失败', 'error');
+            }
+        } catch (error) {
+            console.error('测试S3配置失败:', error);
+            this.showMessage('连接测试失败', 'error');
+        }
     }
 
     // 加载S3配置数据
@@ -466,10 +738,21 @@ class AdminPanel {
         
         const formData = new FormData(e.target);
         const config = Object.fromEntries(formData.entries());
+        const configId = config.configId;
+        const isEdit = configId && configId.trim() !== '';
+
+        // 验证必填字段
+        if (!config.configName || !config.provider || !config.bucket || !config.region || !config.accessKey || !config.secretKey) {
+            this.showMessage('请填写完整的配置信息', 'error');
+            return;
+        }
 
         try {
-            const response = await fetch('/api/admin/s3-config', {
-                method: 'POST',
+            const url = isEdit ? `/api/admin/s3-configs/${configId}` : '/api/admin/s3-configs';
+            const method = isEdit ? 'PUT' : 'POST';
+            
+            const response = await fetch(url, {
+                method: method,
                 headers: {
                     'Content-Type': 'application/json',
                     'Authorization': `Bearer ${this.adminToken}`
@@ -480,7 +763,9 @@ class AdminPanel {
             const result = await response.json();
 
             if (response.ok) {
-                this.showMessage('S3配置保存成功！', 'success');
+                this.showMessage(isEdit ? 'S3配置更新成功！' : 'S3配置保存成功！', 'success');
+                this.cancelEdit(); // 重置表单
+                this.loadS3ConfigList(); // 重新加载列表
             } else {
                 this.showMessage(result.message || '保存失败', 'error');
             }
@@ -496,6 +781,12 @@ class AdminPanel {
         const formData = new FormData(form);
         const config = Object.fromEntries(formData.entries());
 
+        // 验证必填字段
+        if (!config.provider || !config.bucket || !config.region || !config.accessKey || !config.secretKey) {
+            this.showMessage('请先填写完整的配置信息', 'error');
+            return;
+        }
+
         this.showMessage('正在测试连接...', 'info');
 
         try {
@@ -510,8 +801,8 @@ class AdminPanel {
 
             const result = await response.json();
 
-            if (response.ok) {
-                this.showMessage('S3连接测试成功！', 'success');
+            if (response.ok && result.success) {
+                this.showMessage('S3连接测试成功！文件上传和删除测试通过。', 'success');
             } else {
                 this.showMessage(result.message || '连接测试失败', 'error');
             }
