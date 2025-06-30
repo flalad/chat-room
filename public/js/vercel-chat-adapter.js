@@ -268,129 +268,83 @@ class VercelChatAdapter {
 
 // 检测是否在Vercel环境中
 function isVercelEnvironment() {
-    // 检测是否有Socket.IO但连接失败，或者在Vercel域名下
-    return window.location.hostname.includes('vercel.app') ||
-           window.location.hostname.includes('vercel.com') ||
-           window.location.hostname.includes('.vercel.') ||
-           // 检测Socket.IO是否不可用或连接失败
-           typeof io === 'undefined';
+    // 检测是否有Socket.IO但连接失败
+    return typeof io === 'undefined' ||
+           window.location.hostname.includes('vercel.app') ||
+           window.location.hostname.includes('vercel.com');
 }
 
-// 检测Socket.IO连接是否失败
-function detectSocketIOFailure() {
-    return new Promise((resolve) => {
-        if (typeof io === 'undefined') {
-            resolve(true);
-            return;
-        }
-        
-        try {
-            const testSocket = io('/', { timeout: 5000 });
-            
-            const failureTimer = setTimeout(() => {
-                testSocket.disconnect();
-                resolve(true); // Socket.IO连接失败
-            }, 3000);
-            
-            testSocket.on('connect', () => {
-                clearTimeout(failureTimer);
-                testSocket.disconnect();
-                resolve(false); // Socket.IO连接成功
-            });
-            
-            testSocket.on('connect_error', () => {
-                clearTimeout(failureTimer);
-                testSocket.disconnect();
-                resolve(true); // Socket.IO连接失败
-            });
-        } catch (error) {
-            resolve(true); // Socket.IO不可用
-        }
-    });
-}
-
-// 动态检测并初始化适配器
-async function initializeChatAdapter() {
-    const isVercel = isVercelEnvironment();
-    const socketIOFailed = await detectSocketIOFailure();
+// 自动初始化适配器
+if (isVercelEnvironment()) {
+    console.log('🔧 检测到Vercel环境，使用HTTP聊天适配器');
+    window.vercelChatAdapter = new VercelChatAdapter();
     
-    if (isVercel || socketIOFailed) {
-        console.log('🔧 检测到Vercel环境或Socket.IO连接失败，使用HTTP聊天适配器');
-        window.vercelChatAdapter = new VercelChatAdapter();
-        window.useVercelAdapter = true;
-        
-        // 替换原有的聊天管理器初始化
-        if (window.chatManager) {
-            // 重写发送消息方法
-            const originalHandleSendMessage = window.chatManager.handleSendMessage;
-            window.chatManager.handleSendMessage = async function(event) {
-                event.preventDefault();
-                
-                // 检查是否已登录
-                if (!window.authManager.isLoggedIn()) {
-                    this.showError('请先登录');
-                    return;
-                }
-                
-                const messageText = document.getElementById('messageText');
-                if (!messageText) return;
-                
-                const content = messageText.value.trim();
-                if (!content) return;
-                
-                // 使用Vercel适配器发送消息
-                const success = await window.vercelChatAdapter.sendMessage(content);
-                if (success) {
-                    messageText.value = '';
-                    if (this.adjustTextareaHeight) {
-                        this.adjustTextareaHeight(messageText);
-                    }
-                }
-            };
-            
-            // 重写用户登录处理
-            const originalHandleUserLogin = window.chatManager.handleUserLogin;
-            window.chatManager.handleUserLogin = function(userData) {
-                this.currentUser = userData.user;
-                
-                // 更新Vercel适配器的用户信息并启动聊天
-                window.vercelChatAdapter.currentUser = userData.user;
-                window.vercelChatAdapter.initChat(userData.user);
-                
-                console.log('用户登录，启动Vercel聊天功能');
-            };
-            
-            // 重写用户退出处理
-            const originalHandleUserLogout = window.chatManager.handleUserLogout;
-            window.chatManager.handleUserLogout = function() {
-                this.currentUser = null;
-                
-                // 停止聊天功能
-                window.vercelChatAdapter.stopPolling();
-                window.vercelChatAdapter.currentUser = null;
-                
-                console.log('用户退出，停止聊天功能');
-            };
-            
-            // 如果用户已登录，立即启动聊天功能
+    // 替换原有的聊天管理器初始化
+    document.addEventListener('DOMContentLoaded', () => {
+        // 等待认证管理器初始化完成
+        setTimeout(() => {
+            // 检查用户是否已登录
             if (window.authManager && window.authManager.isLoggedIn()) {
                 const currentUser = window.authManager.getCurrentUser();
+                // 启动聊天功能
                 window.vercelChatAdapter.initChat(currentUser);
             }
-        }
-    } else {
-        console.log('✅ Socket.IO连接正常，使用标准聊天功能');
-        window.useVercelAdapter = false;
-    }
+            
+            if (window.chatManager) {
+                // 重写发送消息方法
+                const originalHandleSendMessage = window.chatManager.handleSendMessage;
+                window.chatManager.handleSendMessage = async function(event) {
+                    event.preventDefault();
+                    
+                    // 检查是否已登录
+                    if (!window.authManager.isLoggedIn()) {
+                        this.showError('请先登录');
+                        return;
+                    }
+                    
+                    const messageText = document.getElementById('messageText');
+                    if (!messageText) return;
+                    
+                    const content = messageText.value.trim();
+                    if (!content) return;
+                    
+                    // 使用Vercel适配器发送消息
+                    const success = await window.vercelChatAdapter.sendMessage(content);
+                    if (success) {
+                        messageText.value = '';
+                        if (this.adjustTextareaHeight) {
+                            this.adjustTextareaHeight(messageText);
+                        }
+                    }
+                };
+                
+                // 重写用户登录处理
+                const originalHandleUserLogin = window.chatManager.handleUserLogin;
+                window.chatManager.handleUserLogin = function(userData) {
+                    this.currentUser = userData.user;
+                    
+                    // 更新Vercel适配器的用户信息并启动聊天
+                    window.vercelChatAdapter.currentUser = userData.user;
+                    window.vercelChatAdapter.initChat(userData.user);
+                    
+                    console.log('用户登录，启动Vercel聊天功能');
+                };
+                
+                // 重写用户退出处理
+                const originalHandleUserLogout = window.chatManager.handleUserLogout;
+                window.chatManager.handleUserLogout = function() {
+                    this.currentUser = null;
+                    
+                    // 停止聊天功能
+                    window.vercelChatAdapter.stopPolling();
+                    window.vercelChatAdapter.currentUser = null;
+                    
+                    console.log('用户退出，停止聊天功能');
+                };
+            }
+        }, 100); // 延迟100ms确保认证管理器已初始化
+    });
 }
-
-// 页面加载完成后初始化
-document.addEventListener('DOMContentLoaded', () => {
-    // 延迟初始化，确保所有模块都已加载
-    setTimeout(async () => {
-        await initializeChatAdapter();
-    }, 1000);
-});
 
 // 导出适配器
 window.VercelChatAdapter = VercelChatAdapter;

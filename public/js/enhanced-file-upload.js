@@ -809,10 +809,7 @@ class EnhancedFileUploadManager {
             const messageText = document.getElementById('messageText');
             const messageList = document.getElementById('messageList');
             
-            if (!window.authManager || !window.authManager.isLoggedIn()) {
-                return; // 未登录时不处理粘贴
-            }
-            
+            // 移除登录检查，允许匿名粘贴上传
             // 只在聊天相关区域处理粘贴
             if (activeElement === messageText ||
                 messageList && messageList.contains(activeElement) ||
