@@ -276,33 +276,60 @@ app.get('/api/messages/poll', async (req, res) => {
 
 app.post('/api/messages/send', async (req, res) => {
     try {
-        const { content, type = 'text', username = '匿名用户' } = req.body;
+        const { content, type = 'text', username = '匿名用户', file } = req.body;
         
-        if (!content || content.trim().length === 0) {
-            return res.status(400).json({ message: '消息内容不能为空' });
+        if (type === 'file') {
+            // 文件消息处理
+            if (!file || !file.url || !file.fileName) {
+                return res.status(400).json({ message: '文件信息不完整' });
+            }
+            
+            const message = {
+                id: require('crypto').randomUUID(),
+                type: 'file',
+                username: username,
+                content: content || `[文件] ${file.fileName}`,
+                timestamp: new Date().toISOString(),
+                file: file
+            };
+            
+            await storage.saveMessage(message);
+            
+            res.json({
+                success: true,
+                message: '文件消息发送成功',
+                data: message
+            });
+            
+            console.log(`HTTP文件消息来自 ${username}: ${file.fileName}`);
+        } else {
+            // 文本消息处理
+            if (!content || content.trim().length === 0) {
+                return res.status(400).json({ message: '消息内容不能为空' });
+            }
+            
+            if (content.length > 1000) {
+                return res.status(400).json({ message: '消息长度不能超过1000个字符' });
+            }
+            
+            const message = {
+                id: require('crypto').randomUUID(),
+                type: type,
+                username: username,
+                content: content.trim(),
+                timestamp: new Date().toISOString()
+            };
+            
+            await storage.saveMessage(message);
+            
+            res.json({
+                success: true,
+                message: '消息发送成功',
+                data: message
+            });
+            
+            console.log(`HTTP消息来自 ${username}: ${content}`);
         }
-        
-        if (content.length > 1000) {
-            return res.status(400).json({ message: '消息长度不能超过1000个字符' });
-        }
-        
-        const message = {
-            id: require('crypto').randomUUID(),
-            type: type,
-            username: username,
-            content: content.trim(),
-            timestamp: new Date().toISOString()
-        };
-        
-        await storage.saveMessage(message);
-        
-        res.json({
-            success: true,
-            message: '消息发送成功',
-            data: message
-        });
-        
-        console.log(`HTTP消息来自 ${username}: ${content}`);
     } catch (error) {
         console.error('发送消息失败:', error);
         res.status(500).json({ message: '发送消息失败' });

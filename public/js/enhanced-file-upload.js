@@ -150,8 +150,8 @@ class EnhancedFileUploadManager {
                     return;
                 }
 
-                // 显示文件上传选择模态框
-                this.showUploadOptionsModal();
+                // 直接打开文件选择器
+                fileInput.click();
             });
 
             fileInput.addEventListener('change', this.handleFileSelect.bind(this));
@@ -194,19 +194,10 @@ class EnhancedFileUploadManager {
 
     handleFileSelect(event) {
         const files = Array.from(event.target.files);
-        const uploadType = event.target.getAttribute('data-upload-type') || 'auto';
-        
-        if (uploadType === 'database') {
-            this.handleDatabaseUpload(files);
-        } else if (uploadType === 's3') {
-            this.handleS3Upload(files);
-        } else {
-            this.handleFilesWithOptions(files);
-        }
+        this.handleFilesWithOptions(files);
         
         // 清空文件输入，允许重复选择同一文件
         event.target.value = '';
-        event.target.removeAttribute('data-upload-type');
     }
 
     // 处理文件并显示选择选项
@@ -233,16 +224,17 @@ class EnhancedFileUploadManager {
     async selectStorageForFile(file) {
         const eligibility = this.databaseUpload.isFileEligibleForDatabase(file);
         
+        // 优先使用数据库存储（如果文件符合条件）
         if (eligibility.eligible) {
-            // 文件适合数据库存储，显示选择对话框
-            this.showStorageSelectionModal(file);
+            await this.uploadToDatabase(file);
         } else {
-            // 文件不适合数据库存储，只能使用S3
-            if (!window.s3ConfigManager || !window.s3ConfigManager.isConfigured()) {
-                this.showError('文件过大或类型不支持数据库存储，请先配置S3存储');
+            // 文件不适合数据库存储，尝试使用S3
+            if (window.s3ConfigManager && window.s3ConfigManager.isConfigured()) {
+                await this.uploadToS3(file);
+            } else {
+                this.showError('文件过大或类型不支持数据库存储，且S3存储未配置。请联系管理员配置存储服务。');
                 return;
             }
-            await this.uploadToS3(file);
         }
     }
 
@@ -575,6 +567,8 @@ class EnhancedFileUploadManager {
                 uploadMessageElement.parentNode.removeChild(uploadMessageElement);
             }
 
+            console.log('准备发送文件消息:', fileResult);
+
             // 发送文件消息到服务器
             const messageData = {
                 type: 'file',
@@ -589,14 +583,43 @@ class EnhancedFileUploadManager {
                 timestamp: new Date().toISOString()
             };
 
+            console.log('发送文件消息数据:', messageData);
+
             // 通过Socket.IO发送文件消息
-            if (window.chatManager && window.chatManager.socket) {
+            if (window.chatManager && window.chatManager.socket && window.chatManager.isConnected) {
+                console.log('通过Socket.IO发送文件消息');
                 window.chatManager.socket.emit('file_message', messageData);
+            } else {
+                console.log('Socket未连接，尝试HTTP方式发送');
+                // 如果Socket未连接，尝试通过HTTP API发送
+                const token = localStorage.getItem('token');
+                if (token) {
+                    const response = await fetch('/api/messages/send', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${token}`
+                        },
+                        body: JSON.stringify({
+                            type: 'file',
+                            content: `[文件] ${messageData.file.fileName}`,
+                            file: messageData.file
+                        })
+                    });
+
+                    if (!response.ok) {
+                        throw new Error('HTTP发送失败');
+                    }
+                    
+                    console.log('HTTP方式发送成功');
+                } else {
+                    throw new Error('无法发送消息：未登录且Socket未连接');
+                }
             }
 
         } catch (error) {
             console.error('发送文件消息失败:', error);
-            this.showError('文件上传成功，但发送消息失败');
+            this.showError('文件上传成功，但发送消息失败: ' + error.message);
         }
     }
 
@@ -783,8 +806,13 @@ class EnhancedFileUploadManager {
             // 显示粘贴提示
             this.showPasteNotification(files.length);
             
-            // 处理粘贴的文件
-            await this.handleFilesWithOptions(files);
+            try {
+                // 处理粘贴的文件
+                await this.handleFilesWithOptions(files);
+            } catch (error) {
+                console.error('粘贴文件处理失败:', error);
+                this.showError('粘贴文件处理失败: ' + error.message);
+            }
         }
     }
 

@@ -59,6 +59,8 @@ class DatabaseFileUpload {
 
                     if (onProgress) onProgress(75);
 
+                    console.log('开始上传文件到数据库:', file.name, file.type, file.size);
+
                     const response = await fetch('/api/files/upload-to-db', {
                         method: 'POST',
                         headers: {
@@ -74,12 +76,16 @@ class DatabaseFileUpload {
 
                     if (onProgress) onProgress(90);
 
+                    console.log('上传响应状态:', response.status);
+
                     if (!response.ok) {
-                        const errorData = await response.json();
+                        const errorData = await response.json().catch(() => ({ message: '上传失败' }));
+                        console.error('上传失败:', errorData);
                         throw new Error(errorData.message || '上传失败');
                     }
 
                     const result = await response.json();
+                    console.log('上传成功:', result);
                     
                     if (onProgress) onProgress(100);
                     
@@ -89,10 +95,12 @@ class DatabaseFileUpload {
                         fileUrl: result.fileUrl,
                         fileName: result.fileName,
                         size: result.size,
+                        mimeType: file.type,
                         storageType: 'database'
                     });
 
                 } catch (error) {
+                    console.error('数据库上传错误:', error);
                     reject(error);
                 }
             };
