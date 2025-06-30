@@ -1242,6 +1242,136 @@ app.post('/api/s3/upload-url', authenticateToken, async (req, res) => {
     }
 });
 
+// 数据库文件存储API
+app.post('/api/files/upload-to-db', authenticateToken, async (req, res) => {
+    try {
+        const { fileName, fileType, fileData } = req.body;
+        const username = req.user.username;
+        
+        // 验证文件大小（10MB限制）
+        const maxSize = 10 * 1024 * 1024; // 10MB
+        const fileBuffer = Buffer.from(fileData, 'base64');
+        
+        if (fileBuffer.length > maxSize) {
+            return res.status(413).json({
+                message: `文件太大，数据库存储限制为10MB，当前文件大小：${Math.round(fileBuffer.length / (1024 * 1024))}MB`
+            });
+        }
+        
+        // 生成文件ID
+        const fileId = require('crypto').randomUUID();
+        
+        // 保存到数据库
+        await storage.saveFileToDatabase({
+            id: fileId,
+            originalName: fileName,
+            mimeType: fileType,
+            size: fileBuffer.length,
+            data: fileBuffer,
+            uploader: username
+        });
+        
+        // 生成访问URL
+        const fileUrl = `/api/files/db/${fileId}`;
+        
+        res.json({
+            success: true,
+            fileId: fileId,
+            fileUrl: fileUrl,
+            fileName: fileName,
+            size: fileBuffer.length,
+            message: '文件已保存到数据库'
+        });
+        
+    } catch (error) {
+        console.error('保存文件到数据库失败:', error);
+        res.status(500).json({ message: '文件保存失败' });
+    }
+});
+
+// 从数据库获取文件
+app.get('/api/files/db/:fileId', async (req, res) => {
+    try {
+        const fileId = req.params.fileId;
+        const file = await storage.getFileFromDatabase(fileId);
+        
+        if (!file) {
+            return res.status(404).json({ message: '文件不存在' });
+        }
+        
+        // 设置响应头
+        res.set({
+            'Content-Type': file.mimeType || 'application/octet-stream',
+            'Content-Length': file.size,
+            'Content-Disposition': `inline; filename="${encodeURIComponent(file.originalName)}"`,
+            'Cache-Control': 'public, max-age=31536000' // 缓存1年
+        });
+        
+        // 发送文件数据
+        res.send(file.data);
+        
+    } catch (error) {
+        console.error('获取数据库文件失败:', error);
+        res.status(500).json({ message: '文件获取失败' });
+    }
+});
+
+// 获取数据库文件列表（管理员）
+app.get('/api/admin/files/database', authenticateAdmin, async (req, res) => {
+    try {
+        const files = await storage.getDatabaseFileList(100);
+        res.json({ files });
+    } catch (error) {
+        console.error('获取数据库文件列表失败:', error);
+        res.status(500).json({ message: '获取文件列表失败' });
+    }
+});
+
+// 删除数据库文件（管理员）
+app.delete('/api/admin/files/database/:fileId', authenticateAdmin, async (req, res) => {
+    try {
+        const fileId = req.params.fileId;
+        const deleted = await storage.deleteFileFromDatabase(fileId);
+        
+        if (deleted) {
+            res.json({ message: '文件删除成功' });
+        } else {
+            res.status(404).json({ message: '文件不存在' });
+        }
+    } catch (error) {
+        console.error('删除数据库文件失败:', error);
+        res.status(500).json({ message: '文件删除失败' });
+    }
+});
+
+// 获取数据库存储使用情况
+app.get('/api/admin/storage/database-usage', authenticateAdmin, async (req, res) => {
+    try {
+        const usage = await storage.getDatabaseStorageUsage();
+        res.json(usage);
+    } catch (error) {
+        console.error('获取数据库存储使用情况失败:', error);
+        res.status(500).json({ message: '获取存储使用情况失败' });
+    }
+});
+
+// 清理数据库中的旧文件
+app.post('/api/admin/storage/cleanup-database', authenticateAdmin, async (req, res) => {
+    try {
+        const { maxAgeDays = 30, maxAccessCount = 5 } = req.body;
+        const deletedFiles = await storage.cleanupOldFiles(maxAgeDays, maxAccessCount);
+        
+        res.json({
+            message: '数据库文件清理完成',
+            deletedCount: deletedFiles.length,
+            deletedFiles: deletedFiles.map(f => f.original_name)
+        });
+    } catch (error) {
+        console.error('清理数据库文件失败:', error);
+        res.status(500).json({ message: '文件清理失败' });
+    }
+});
+
 // Socket.IO连接处理
 io.on('connection', (socket) => {
     console.log('用户连接:', socket.id);

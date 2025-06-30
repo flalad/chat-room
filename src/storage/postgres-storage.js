@@ -74,6 +74,21 @@ class PostgreSQLStorage extends BaseStorage {
                 )
             `);
             
+            // 文件存储表（用于存储小文件的二进制数据）
+            await client.query(`
+                CREATE TABLE IF NOT EXISTS file_storage (
+                    id VARCHAR(36) PRIMARY KEY,
+                    original_name TEXT NOT NULL,
+                    mime_type VARCHAR(100),
+                    size BIGINT,
+                    data BYTEA NOT NULL,
+                    uploader VARCHAR(50),
+                    upload_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    access_count INTEGER DEFAULT 0,
+                    last_accessed TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                )
+            `);
+            
             // 插入默认管理员配置
             await client.query(`
                 INSERT INTO admin_config (key, value) VALUES 
@@ -341,6 +356,169 @@ class PostgreSQLStorage extends BaseStorage {
         } finally {
             client.release();
         }
+    }
+    
+    // 保存文件到数据库
+    async saveFileToDatabase(fileData) {
+        const client = await this.pool.connect();
+        try {
+            const { id, originalName, mimeType, size, data, uploader } = fileData;
+            
+            await client.query(
+                'INSERT INTO file_storage (id, original_name, mime_type, size, data, uploader) VALUES ($1, $2, $3, $4, $5, $6)',
+                [id, originalName, mimeType, size, data, uploader]
+            );
+            
+            console.log(`📁 PostgreSQL: 文件已保存到数据库 - ${originalName} (${this.formatFileSize(size)})`);
+            return true;
+        } catch (error) {
+            console.error('❌ PostgreSQL: 保存文件到数据库失败:', error);
+            throw error;
+        } finally {
+            client.release();
+        }
+    }
+    
+    // 从数据库获取文件
+    async getFileFromDatabase(fileId) {
+        const client = await this.pool.connect();
+        try {
+            const result = await client.query(
+                'SELECT * FROM file_storage WHERE id = $1',
+                [fileId]
+            );
+            
+            if (result.rows.length > 0) {
+                const file = result.rows[0];
+                
+                // 更新访问计数和时间
+                await client.query(
+                    'UPDATE file_storage SET access_count = access_count + 1, last_accessed = CURRENT_TIMESTAMP WHERE id = $1',
+                    [fileId]
+                );
+                
+                console.log(`📁 PostgreSQL: 从数据库获取文件 - ${file.original_name}`);
+                return {
+                    id: file.id,
+                    originalName: file.original_name,
+                    mimeType: file.mime_type,
+                    size: file.size,
+                    data: file.data,
+                    uploader: file.uploader,
+                    uploadTime: file.upload_time,
+                    accessCount: file.access_count + 1
+                };
+            }
+            
+            return null;
+        } catch (error) {
+            console.error('❌ PostgreSQL: 从数据库获取文件失败:', error);
+            throw error;
+        } finally {
+            client.release();
+        }
+    }
+    
+    // 删除数据库中的文件
+    async deleteFileFromDatabase(fileId) {
+        const client = await this.pool.connect();
+        try {
+            const result = await client.query(
+                'DELETE FROM file_storage WHERE id = $1',
+                [fileId]
+            );
+            
+            const deleted = result.rowCount > 0;
+            console.log(`📁 PostgreSQL: 从数据库删除文件 - ${fileId}: ${deleted ? '成功' : '失败'}`);
+            return deleted;
+        } catch (error) {
+            console.error('❌ PostgreSQL: 从数据库删除文件失败:', error);
+            throw error;
+        } finally {
+            client.release();
+        }
+    }
+    
+    // 获取数据库中的文件列表
+    async getDatabaseFileList(limit = 100) {
+        const client = await this.pool.connect();
+        try {
+            const result = await client.query(
+                'SELECT id, original_name, mime_type, size, uploader, upload_time, access_count FROM file_storage ORDER BY upload_time DESC LIMIT $1',
+                [limit]
+            );
+            
+            const files = result.rows.map(file => ({
+                id: file.id,
+                originalName: file.original_name,
+                mimeType: file.mime_type,
+                size: file.size,
+                uploader: file.uploader,
+                uploadTime: file.upload_time,
+                accessCount: file.access_count,
+                storageType: 'database'
+            }));
+            
+            console.log(`📁 PostgreSQL: 获取数据库文件列表 - ${files.length} 个文件`);
+            return files;
+        } catch (error) {
+            console.error('❌ PostgreSQL: 获取数据库文件列表失败:', error);
+            throw error;
+        } finally {
+            client.release();
+        }
+    }
+    
+    // 获取数据库存储使用情况
+    async getDatabaseStorageUsage() {
+        const client = await this.pool.connect();
+        try {
+            const result = await client.query(
+                'SELECT COUNT(*) as file_count, COALESCE(SUM(size), 0) as total_size FROM file_storage'
+            );
+            
+            const stats = result.rows[0];
+            return {
+                fileCount: parseInt(stats.file_count),
+                totalSize: parseInt(stats.total_size),
+                storageType: 'database'
+            };
+        } catch (error) {
+            console.error('❌ PostgreSQL: 获取数据库存储使用情况失败:', error);
+            throw error;
+        } finally {
+            client.release();
+        }
+    }
+    
+    // 清理旧文件（超过指定天数且访问次数少的文件）
+    async cleanupOldFiles(maxAgeDays = 30, maxAccessCount = 5) {
+        const client = await this.pool.connect();
+        try {
+            const result = await client.query(`
+                DELETE FROM file_storage
+                WHERE upload_time < NOW() - INTERVAL '${maxAgeDays} days'
+                AND access_count <= $1
+                RETURNING id, original_name
+            `, [maxAccessCount]);
+            
+            console.log(`🧹 PostgreSQL: 清理旧文件 - 删除了 ${result.rowCount} 个文件`);
+            return result.rows;
+        } catch (error) {
+            console.error('❌ PostgreSQL: 清理旧文件失败:', error);
+            throw error;
+        } finally {
+            client.release();
+        }
+    }
+    
+    // 格式化文件大小的辅助方法
+    formatFileSize(bytes) {
+        if (bytes === 0) return '0 B';
+        const k = 1024;
+        const sizes = ['B', 'KB', 'MB', 'GB'];
+        const i = Math.floor(Math.log(bytes) / Math.log(k));
+        return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
     }
     
     // 关闭连接池

@@ -1424,6 +1424,14 @@ class AdminPanel {
         const date = new Date(dateString);
         return date.toLocaleString('zh-CN');
     }
+
+    // HTML转义函数
+    escapeHtml(text) {
+        if (!text) return '';
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+    }
 }
 
 // 初始化管理员面板
