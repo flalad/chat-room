@@ -189,6 +189,20 @@ class ChatRoomApp {
                 await module.init();
             }
         }
+        
+        // 初始化文件上传管理器
+        if (window.enhancedFileUploadManager) {
+            Utils.log.info('初始化增强文件上传管理器');
+            // 确保文件上传管理器已初始化
+            if (typeof window.enhancedFileUploadManager.init === 'function') {
+                window.enhancedFileUploadManager.init();
+            }
+        }
+        
+        // 禁用原来的文件上传管理器，使用新的增强版本
+        if (window.fileUploadManager) {
+            Utils.log.info('禁用原文件上传管理器，使用增强版本');
+        }
     }
     
     // 设置全局事件监听器

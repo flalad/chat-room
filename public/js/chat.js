@@ -328,8 +328,28 @@ class ChatManager {
                 </div>
             `;
         } else if (message.type === 'file') {
-            // 使用文件上传管理器创建文件消息
-            return window.fileUploadManager.createFileMessage(message, isOwn);
+            // 使用增强的文件上传管理器创建文件消息
+            if (window.enhancedFileUploadManager) {
+                return window.enhancedFileUploadManager.createFileMessage(message, isOwn);
+            } else if (window.fileUploadManager) {
+                return window.fileUploadManager.createFileMessage(message, isOwn);
+            } else {
+                // 备用文件消息显示
+                messageDiv.innerHTML = `
+                    <div class="message-content">
+                        <div class="file-info">
+                            <div class="file-icon">📎</div>
+                            <div class="file-details">
+                                <div class="file-name">${this.escapeHtml(message.file.fileName)}</div>
+                                <div class="file-size">文件</div>
+                            </div>
+                            <a href="${message.file.url}" target="_blank" class="download-btn" title="下载文件">下载</a>
+                        </div>
+                    </div>
+                    <div class="message-time">${this.formatTime(new Date(message.timestamp))}</div>
+                `;
+                return messageDiv;
+            }
         } else {
             // 普通文本消息 - Telegram风格
             const avatarChar = this.getAvatarChar(message.username);

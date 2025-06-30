@@ -21,6 +21,7 @@ class EnhancedFileUploadManager {
     init() {
         this.bindEvents();
         this.addStyles();
+        this.setupPasteUpload();
     }
 
     addStyles() {
@@ -110,6 +111,28 @@ class EnhancedFileUploadManager {
                 color: #666;
                 font-size: 0.9rem;
                 line-height: 1.4;
+            }
+            
+            @keyframes slideInDown {
+                from {
+                    transform: translateX(-50%) translateY(-100%);
+                    opacity: 0;
+                }
+                to {
+                    transform: translateX(-50%) translateY(0);
+                    opacity: 1;
+                }
+            }
+            
+            @keyframes slideOutUp {
+                from {
+                    transform: translateX(-50%) translateY(0);
+                    opacity: 1;
+                }
+                to {
+                    transform: translateX(-50%) translateY(-100%);
+                    opacity: 0;
+                }
             }
         `;
         document.head.appendChild(styles);
@@ -711,6 +734,90 @@ class EnhancedFileUploadManager {
         `;
 
         return messageDiv;
+    }
+
+    // 设置粘贴上传功能
+    setupPasteUpload() {
+        // 监听全局粘贴事件
+        document.addEventListener('paste', (event) => {
+            // 检查是否在聊天输入框或消息区域
+            const activeElement = document.activeElement;
+            const messageText = document.getElementById('messageText');
+            const messageList = document.getElementById('messageList');
+            
+            if (!window.authManager || !window.authManager.isLoggedIn()) {
+                return; // 未登录时不处理粘贴
+            }
+            
+            // 只在聊天相关区域处理粘贴
+            if (activeElement === messageText ||
+                messageList.contains(activeElement) ||
+                activeElement === document.body) {
+                
+                this.handlePasteEvent(event);
+            }
+        });
+    }
+
+    // 处理粘贴事件
+    async handlePasteEvent(event) {
+        const clipboardData = event.clipboardData || window.clipboardData;
+        if (!clipboardData) return;
+
+        const items = Array.from(clipboardData.items);
+        const files = [];
+
+        // 检查粘贴的内容中是否有文件
+        for (const item of items) {
+            if (item.kind === 'file') {
+                const file = item.getAsFile();
+                if (file) {
+                    files.push(file);
+                }
+            }
+        }
+
+        if (files.length > 0) {
+            event.preventDefault(); // 阻止默认粘贴行为
+            
+            // 显示粘贴提示
+            this.showPasteNotification(files.length);
+            
+            // 处理粘贴的文件
+            await this.handleFilesWithOptions(files);
+        }
+    }
+
+    // 显示粘贴提示
+    showPasteNotification(fileCount) {
+        const notification = document.createElement('div');
+        notification.className = 'paste-notification';
+        notification.textContent = `检测到 ${fileCount} 个文件，正在处理...`;
+        notification.style.cssText = `
+            position: fixed;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: #007bff;
+            color: white;
+            padding: 8px 16px;
+            border-radius: 6px;
+            font-size: 14px;
+            z-index: 10000;
+            animation: slideInDown 0.3s ease-out;
+        `;
+
+        document.body.appendChild(notification);
+
+        // 3秒后自动移除
+        setTimeout(() => {
+            notification.style.animation = 'slideOutUp 0.3s ease-in';
+            setTimeout(() => {
+                if (notification.parentNode) {
+                    notification.parentNode.removeChild(notification);
+                }
+            }, 300);
+        }, 3000);
     }
 }
 
