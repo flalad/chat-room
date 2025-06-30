@@ -7,6 +7,9 @@ const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const AWS = require('aws-sdk');
 
+// 导入存储系统
+const StorageFactory = require('../src/storage/storage-factory');
+
 const app = express();
 const server = http.createServer(app);
 const io = socketIo(server, {
@@ -26,35 +29,61 @@ const PORT = process.env.PORT || 3000;
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-change-in-production';
 const ADMIN_JWT_SECRET = process.env.ADMIN_JWT_SECRET || 'admin-secret-key-change-in-production';
 
-// 内存存储（生产环境应使用数据库）
-const users = new Map();
-const messages = [];
+// 初始化存储系统
+const storage = StorageFactory.createStorage(process.env);
+
+// 内存存储（仅用于连接用户和临时数据）
 const connectedUsers = new Map();
-const s3Configs = new Map();
 const uploadedFiles = new Map();
 
-// 管理员配置（生产环境必须设置环境变量）
-const adminConfig = {
-    username: process.env.ADMIN_USERNAME || (process.env.NODE_ENV === 'production' ? null : 'admin'),
-    password: process.env.ADMIN_PASSWORD_HASH || (process.env.NODE_ENV === 'production' ? null : '$2a$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi'), // 本地测试默认密码: password
-    plainPassword: process.env.ADMIN_PASSWORD || null, // 支持明文密码
-};
+// 管理员配置获取函数
+async function getAdminConfig() {
+    // 优先使用环境变量
+    if (process.env.ADMIN_USERNAME) {
+        return {
+            username: process.env.ADMIN_USERNAME,
+            password: process.env.ADMIN_PASSWORD_HASH,
+            plainPassword: process.env.ADMIN_PASSWORD
+        };
+    }
+    
+    // 从存储系统获取
+    const username = await storage.getAdminConfig('admin_username');
+    const passwordHash = await storage.getAdminConfig('admin_password_hash');
+    const plainPassword = await storage.getAdminConfig('admin_password');
+    
+    return {
+        username: username || 'admin',
+        password: passwordHash,
+        plainPassword: plainPassword
+    };
+}
 
 // 检查生产环境管理员配置
-if (process.env.NODE_ENV === 'production' && (!adminConfig.username || (!adminConfig.password && !adminConfig.plainPassword))) {
-    console.warn('⚠️ 生产环境警告: 建议设置管理员账户环境变量');
-    console.warn('请设置以下环境变量之一:');
-    console.warn('');
-    console.warn('方式1 - 明文密码（简单）:');
-    console.warn('  ADMIN_USERNAME=your_admin_username');
-    console.warn('  ADMIN_PASSWORD=your_plain_password');
-    console.warn('');
-    console.warn('方式2 - 哈希密码（更安全）:');
-    console.warn('  ADMIN_USERNAME=your_admin_username');
-    console.warn('  ADMIN_PASSWORD_HASH=your_bcrypt_hashed_password');
-    console.warn('');
-    console.warn('当前使用默认管理员配置，请尽快更改！');
+async function checkAdminConfig() {
+    const config = await getAdminConfig();
+    
+    if (process.env.NODE_ENV === 'production' && (!config.username || (!config.password && !config.plainPassword))) {
+        console.warn('⚠️ 生产环境警告: 建议设置管理员账户环境变量');
+        console.warn('请设置以下环境变量之一:');
+        console.warn('');
+        console.warn('方式1 - 明文密码（简单）:');
+        console.warn('  ADMIN_USERNAME=your_admin_username');
+        console.warn('  ADMIN_PASSWORD=your_plain_password');
+        console.warn('');
+        console.warn('方式2 - 哈希密码（更安全）:');
+        console.warn('  ADMIN_USERNAME=your_admin_username');
+        console.warn('  ADMIN_PASSWORD_HASH=your_bcrypt_hashed_password');
+        console.warn('');
+        console.warn('方式3 - 数据库配置:');
+        console.warn('  DATABASE_URL=your_database_connection_string');
+        console.warn('');
+        console.warn('当前使用默认管理员配置，请尽快更改！');
+    }
 }
+
+// 初始化管理员配置检查
+checkAdminConfig().catch(console.error);
 
 // 系统设置
 const systemSettings = {
@@ -118,7 +147,8 @@ app.post('/api/auth/register', async (req, res) => {
         }
 
         // 检查用户是否已存在
-        if (users.has(username)) {
+        const existingUser = await storage.getUser(username);
+        if (existingUser) {
             return res.status(400).json({ message: '用户名已存在' });
         }
 
@@ -132,9 +162,9 @@ app.post('/api/auth/register', async (req, res) => {
             createdAt: new Date().toISOString()
         };
 
-        users.set(username, user);
+        await storage.saveUser(user);
 
-        res.status(201).json({ 
+        res.status(201).json({
             message: '注册成功',
             user: { username, createdAt: user.createdAt }
         });
@@ -155,13 +185,13 @@ app.post('/api/auth/login', async (req, res) => {
         }
 
         // 查找用户
-        const user = users.get(username);
+        const user = await storage.getUser(username);
         if (!user) {
             return res.status(401).json({ message: '用户名或密码错误' });
         }
 
         // 验证密码
-        const isValidPassword = await bcrypt.compare(password, user.password);
+        const isValidPassword = await bcrypt.compare(password, user.password || user.password_hash);
         if (!isValidPassword) {
             return res.status(401).json({ message: '用户名或密码错误' });
         }
@@ -176,9 +206,9 @@ app.post('/api/auth/login', async (req, res) => {
         res.json({
             message: '登录成功',
             token,
-            user: { 
+            user: {
                 username: user.username,
-                createdAt: user.createdAt
+                createdAt: user.createdAt || user.created_at
             }
         });
 
@@ -200,6 +230,95 @@ app.post('/api/auth/logout', authenticateToken, (req, res) => {
     res.json({ message: '退出登录成功' });
 });
 
+// HTTP聊天API（Vercel兼容）
+app.get('/api/messages/history', authenticateToken, async (req, res) => {
+    try {
+        const limit = parseInt(req.query.limit) || 100;
+        const messages = await storage.getMessages(limit);
+        
+        res.json({
+            success: true,
+            messages: messages,
+            count: messages.length
+        });
+    } catch (error) {
+        console.error('获取消息历史失败:', error);
+        res.status(500).json({ message: '获取消息历史失败' });
+    }
+});
+
+app.get('/api/messages/poll', authenticateToken, async (req, res) => {
+    try {
+        const afterId = req.query.after;
+        const messages = await storage.getMessages(50);
+        
+        let newMessages = messages;
+        if (afterId) {
+            const afterIndex = messages.findIndex(msg => msg.id === afterId);
+            newMessages = afterIndex >= 0 ? messages.slice(afterIndex + 1) : [];
+        }
+        
+        res.json({
+            success: true,
+            messages: newMessages,
+            count: newMessages.length
+        });
+    } catch (error) {
+        console.error('轮询消息失败:', error);
+        res.status(500).json({ message: '轮询消息失败' });
+    }
+});
+
+app.post('/api/messages/send', authenticateToken, async (req, res) => {
+    try {
+        const { content, type = 'text' } = req.body;
+        const username = req.user.username;
+        
+        if (!content || content.trim().length === 0) {
+            return res.status(400).json({ message: '消息内容不能为空' });
+        }
+        
+        if (content.length > 1000) {
+            return res.status(400).json({ message: '消息长度不能超过1000个字符' });
+        }
+        
+        const message = {
+            id: require('crypto').randomUUID(),
+            type: type,
+            username: username,
+            content: content.trim(),
+            timestamp: new Date().toISOString()
+        };
+        
+        await storage.saveMessage(message);
+        
+        res.json({
+            success: true,
+            message: '消息发送成功',
+            data: message
+        });
+        
+        console.log(`HTTP消息来自 ${username}: ${content}`);
+    } catch (error) {
+        console.error('发送消息失败:', error);
+        res.status(500).json({ message: '发送消息失败' });
+    }
+});
+
+app.get('/api/users/online', authenticateToken, (req, res) => {
+    try {
+        const onlineUsers = Array.from(connectedUsers.values());
+        res.json({
+            success: true,
+            users: onlineUsers,
+            count: onlineUsers.length
+        });
+    } catch (error) {
+        console.error('获取在线用户失败:', error);
+        res.status(500).json({ message: '获取在线用户失败' });
+    }
+});
+
 // 管理员API路由
 app.post('/api/admin/login', async (req, res) => {
     try {
@@ -209,6 +328,9 @@ app.post('/api/admin/login', async (req, res) => {
         if (!username || !password) {
             return res.status(400).json({ message: '用户名和密码不能为空' });
         }
+
+        // 获取管理员配置
+        const adminConfig = await getAdminConfig();
 
         // 检查管理员配置是否存在
         if (!adminConfig.username || (!adminConfig.password && !adminConfig.plainPassword)) {
@@ -641,7 +763,7 @@ io.on('connection', (socket) => {
     console.log('用户连接:', socket.id);
 
     // 用户加入
-    socket.on('user_join', (userData) => {
+    socket.on('user_join', async (userData) => {
         if (userData && userData.username) {
             socket.username = userData.username;
             connectedUsers.set(socket.id, {
@@ -649,67 +771,73 @@ io.on('connection', (socket) => {
                 joinTime: new Date().toISOString()
             });
 
-            // 发送历史消息
-            socket.emit('message_history', messages);
+            try {
+                // 发送历史消息
+                const messages = await storage.getMessages(100);
+                socket.emit('message_history', messages);
 
-            // 广播用户列表更新
-            io.emit('users_update', Array.from(connectedUsers.values()));
+                // 广播用户列表更新
+                io.emit('users_update', Array.from(connectedUsers.values()));
 
-            // 广播用户加入消息
-            const joinMessage = {
-                type: 'system',
-                content: `${userData.username} 加入了聊天室`,
-                timestamp: new Date().toISOString()
-            };
-            socket.broadcast.emit('new_message', joinMessage);
+                // 广播用户加入消息
+                const joinMessage = {
+                    id: require('crypto').randomUUID(),
+                    type: 'system',
+                    content: `${userData.username} 加入了聊天室`,
+                    timestamp: new Date().toISOString()
+                };
+                
+                await storage.saveMessage(joinMessage);
+                socket.broadcast.emit('new_message', joinMessage);
 
-            console.log(`用户 ${userData.username} 加入聊天室`);
+                console.log(`用户 ${userData.username} 加入聊天室`);
+            } catch (error) {
+                console.error('用户加入处理错误:', error);
+            }
         }
     });
 
     // 处理文本消息
-    socket.on('send_message', (messageData) => {
+    socket.on('send_message', async (messageData) => {
         if (socket.username && messageData.content) {
             const message = {
-                id: Date.now().toString(),
+                id: require('crypto').randomUUID(),
                 type: 'text',
                 username: socket.username,
                 content: messageData.content,
                 timestamp: new Date().toISOString()
             };
 
-            messages.push(message);
-            
-            // 限制消息历史记录数量
-            if (messages.length > 1000) {
-                messages.splice(0, messages.length - 1000);
+            try {
+                await storage.saveMessage(message);
+                io.emit('new_message', message);
+                console.log(`消息来自 ${socket.username}: ${messageData.content}`);
+            } catch (error) {
+                console.error('保存消息错误:', error);
+                socket.emit('error', { message: '消息发送失败' });
             }
-
-            io.emit('new_message', message);
-            console.log(`消息来自 ${socket.username}: ${messageData.content}`);
         }
     });
 
     // 处理文件消息
-    socket.on('file_message', (messageData) => {
+    socket.on('file_message', async (messageData) => {
         if (socket.username && messageData.file) {
             const message = {
-                id: Date.now().toString(),
+                id: require('crypto').randomUUID(),
                 type: 'file',
                 username: socket.username,
                 file: messageData.file,
                 timestamp: new Date().toISOString()
             };
 
-            messages.push(message);
-            
-            // 限制消息历史记录数量
-            if (messages.length > 1000) {
-                messages.splice(0, messages.length - 1000);
+            try {
+                await storage.saveMessage(message);
+                io.emit('new_message', message);
+                console.log(`文件消息来自 ${socket.username}: ${messageData.file.fileName}`);
+            } catch (error) {
+                console.error('保存文件消息错误:', error);
+                socket.emit('error', { message: '文件消息发送失败' });
             }
-
-            io.emit('new_message', message);
-            console.log(`文件消息来自 ${socket.username}: ${messageData.file.fileName}`);
         }
     });
 
@@ -733,7 +861,7 @@ io.on('connection', (socket) => {
     });
 
     // 用户断开连接
-    socket.on('disconnect', () => {
+    socket.on('disconnect', async () => {
         if (socket.username) {
             connectedUsers.delete(socket.id);
 
@@ -742,13 +870,19 @@ io.on('connection', (socket) => {
 
             // 广播用户离开消息
             const leaveMessage = {
+                id: require('crypto').randomUUID(),
                 type: 'system',
                 content: `${socket.username} 离开了聊天室`,
                 timestamp: new Date().toISOString()
             };
-            socket.broadcast.emit('new_message', leaveMessage);
-
-            console.log(`用户 ${socket.username} 离开聊天室`);
+            
+            try {
+                await storage.saveMessage(leaveMessage);
+                socket.broadcast.emit('new_message', leaveMessage);
+                console.log(`用户 ${socket.username} 离开聊天室`);
+            } catch (error) {
+                console.error('保存离开消息错误:', error);
+            }
         }
         console.log('用户断开连接:', socket.id);
     });

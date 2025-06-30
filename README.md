@@ -33,10 +33,11 @@
 
 ### 🔧 技术特性
 - **现代化架构**：ES6+ JavaScript，模块化设计
-- **实时通信**：Socket.IO 实现低延迟消息传递
+- **多平台支持**：支持 Railway、Render、Vercel、Heroku、Cloudflare 等平台
+- **通用存储系统**：自动适配内存、PostgreSQL、MySQL、Cloudflare KV 等存储方式
+- **实时通信**：WebSocket 和 HTTP 轮询双模式支持
 - **文件存储**：支持本地存储和 AWS S3 云存储
 - **安全认证**：JWT Token 认证，密码加密存储
-- **错误处理**：完善的错误处理和用户反馈机制
 
 ## 🚀 快速开始
 
@@ -44,7 +45,7 @@
 - Node.js 14.0 或更高版本
 - npm 或 yarn 包管理器
 
-### 安装步骤
+### 本地开发
 
 1. **克隆项目**
 ```bash
@@ -57,71 +58,118 @@ cd chat-room
 npm install
 ```
 
-3. **配置环境变量**
-```bash
-cp .env.example .env
-```
-
-编辑 `.env` 文件，配置以下参数：
-```env
-PORT=3000
-JWT_SECRET=your-jwt-secret-key
-ADMIN_USERNAME=admin
-ADMIN_PASSWORD=your-admin-password
-
-# AWS S3 配置（可选）
-AWS_ACCESS_KEY_ID=your-access-key
-AWS_SECRET_ACCESS_KEY=your-secret-key
-AWS_REGION=your-region
-S3_BUCKET_NAME=your-bucket-name
-```
-
-4. **启动应用**
+3. **启动应用**
 ```bash
 npm start
+# 或
+node server.js
 ```
 
-5. **访问应用**
+4. **访问应用**
 打开浏览器访问 `http://localhost:3000`
+
+### 默认管理员账户
+- **用户名**: `admin`
+- **密码**: `password`
 
 ## 📁 项目结构
 
 ```
 chat-room/
+├── docs/                   # 文档目录
+│   ├── DEPLOYMENT.md       # 部署指南
+│   └── CLOUDFLARE.md       # Cloudflare解决方案
+├── src/                    # 源代码
+│   └── storage/            # 存储适配器
+│       ├── storage-factory.js    # 存储工厂
+│       ├── base-storage.js       # 存储基类
+│       └── postgres-storage.js   # PostgreSQL适配器
+├── api/                    # API服务器
+│   ├── index.js           # Vercel函数入口
+│   └── server.js          # 主服务器文件
 ├── public/                 # 前端静态文件
 │   ├── css/               # 样式文件
-│   │   ├── apple-window.css    # 窗口和用户界面样式
-│   │   ├── telegram.css        # Telegram 风格布局
-│   │   ├── theme-settings.css  # 主题设置样式
-│   │   ├── components.css      # 组件样式
-│   │   ├── auth.css           # 认证页面样式
-│   │   ├── main.css           # 主要样式
-│   │   ├── reset.css          # CSS 重置
-│   │   └── responsive.css     # 响应式样式
-│   ├── js/                # JavaScript 文件
-│   │   ├── app.js             # 应用主入口
-│   │   ├── auth.js            # 认证管理
-│   │   ├── chat.js            # 聊天功能
-│   │   ├── theme-manager.js   # 主题管理
-│   │   ├── file-upload.js     # 文件上传
-│   │   ├── user-interface.js  # 用户界面
-│   │   ├── room-manager.js    # 房间管理
-│   │   ├── s3-config.js       # S3 配置
-│   │   ├── auth-page.js       # 认证页面
-│   │   ├── ui.js              # UI 工具
-│   │   ├── config.js          # 配置管理
-│   │   └── utils.js           # 工具函数
-│   ├── images/            # 图片资源
-│   │   └── backgrounds/       # 背景图片
+│   ├── js/                # JavaScript文件
+│   │   ├── vercel-chat-adapter.js  # Vercel聊天适配器
+│   │   └── ...            # 其他JS文件
 │   ├── index.html         # 主页面
 │   ├── login.html         # 登录页面
 │   ├── register.html      # 注册页面
 │   └── admin.html         # 管理员页面
-├── server.js              # 服务器主文件
+├── server.js              # 服务器主文件（本地开发）
 ├── package.json           # 项目配置
-├── .env.example          # 环境变量示例
-└── README.md             # 项目文档
+├── vercel.json            # Vercel配置
+└── README.md              # 项目文档
 ```
+
+## 🌐 部署指南
+
+### 🎯 平台选择
+
+| 平台 | 聊天功能 | 数据库 | 难度 | 推荐度 |
+|------|----------|--------|------|--------|
+| **Railway** | ✅ 完整 | 内置PostgreSQL | ⭐ | 🟢 强烈推荐 |
+| **Render** | ✅ 完整 | 外部PostgreSQL | ⭐⭐ | 🟢 推荐 |
+| **Vercel** | ⚠️ HTTP轮询 | 外部PostgreSQL | ⭐⭐⭐ | 🟡 可用 |
+| **Heroku** | ✅ 完整 | 插件PostgreSQL | ⭐⭐ | 🟢 推荐 |
+| **Cloudflare** | ✅ 完整 | D1+KV | ⭐⭐⭐⭐ | 🟡 高级 |
+
+### 📋 环境变量配置
+
+```bash
+# 基础配置
+NODE_ENV=production
+ADMIN_USERNAME=admin
+ADMIN_PASSWORD=your_password
+
+# 数据库配置（推荐）
+DATABASE_URL=postgresql://user:password@host:port/database
+
+# JWT密钥（可选）
+JWT_SECRET=your_jwt_secret
+ADMIN_JWT_SECRET=your_admin_jwt_secret
+```
+
+### 🚀 一键部署
+
+#### Railway（推荐）
+1. 访问 [Railway.app](https://railway.app)
+2. 连接GitHub仓库
+3. 自动部署，零配置
+
+#### Render
+1. 访问 [Render.com](https://render.com)
+2. 创建Web Service
+3. 连接仓库并配置环境变量
+
+#### Vercel（特殊配置）
+1. 获取外部数据库（推荐 [Supabase](https://supabase.com)）
+2. 设置 `DATABASE_URL` 环境变量
+3. 自动启用HTTP轮询聊天模式
+
+**📚 详细部署指南**: [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md)
+
+**🌐 Cloudflare解决方案**: [docs/CLOUDFLARE.md](docs/CLOUDFLARE.md)
+
+## 🔧 存储系统
+
+### 自动适配机制
+项目会根据环境自动选择最适合的存储方式：
+
+1. **外部数据库**（推荐）
+   - 设置 `DATABASE_URL` 环境变量
+   - 支持 PostgreSQL 和 MySQL
+   - 数据持久化，重启不丢失
+
+2. **Cloudflare KV**
+   - 设置 `KV_NAMESPACE` 环境变量
+   - 适用于 Cloudflare Workers
+   - 全球分布式存储
+
+3. **内存存储**（开发环境）
+   - 无需配置
+   - 重启后数据丢失
+   - 仅适合开发测试
 
 ## 🎨 主题系统
 
@@ -131,13 +179,7 @@ chat-room/
 3. **彩色渐变**：多种渐变色彩主题
 
 ### 自定义主题
-可以通过修改 `public/css/theme-settings.css` 添加新的主题：
-
-```css
-.theme-custom {
-    background: your-custom-background;
-}
-```
+可以通过修改 `public/css/theme-settings.css` 添加新的主题。
 
 ## 🔐 用户权限
 
@@ -167,252 +209,94 @@ chat-room/
 - `GET /api/admin/users` - 获取用户列表
 - `DELETE /api/admin/users/:id` - 删除用户
 
+### 聊天接口（HTTP模式）
+- `GET /api/messages/history` - 获取消息历史
+- `GET /api/messages/poll` - 轮询新消息
+- `POST /api/messages/send` - 发送消息
+- `GET /api/users/online` - 获取在线用户
+
 ### 文件接口
 - `POST /api/upload` - 文件上传
 - `GET /uploads/:filename` - 文件下载
 
-## 🌐 部署指南
+**📖 完整API文档**: [API.md](API.md)
 
-### 本地部署
+## 🔧 功能对比
 
-1. **开发环境**
-```bash
-npm run dev  # 如果配置了开发脚本
-# 或
-node server.js
-```
+### WebSocket vs HTTP轮询
 
-2. **生产环境**
-```bash
-NODE_ENV=production node server.js
-```
+| 功能 | WebSocket模式 | HTTP模式（Vercel） |
+|------|---------------|-------------------|
+| 发送消息 | ✅ 实时 | ✅ 立即 |
+| 接收消息 | ✅ 实时 | ⚠️ 3秒延迟 |
+| 在线用户 | ✅ 实时更新 | ❌ 静态显示 |
+| 数据持久化 | ❌ 内存 | ✅ 数据库 |
+| 服务器要求 | 长连接 | 无状态函数 |
 
-### Docker 部署
-
-1. **创建 Dockerfile**
-```dockerfile
-FROM node:16-alpine
-
-WORKDIR /app
-
-COPY package*.json ./
-RUN npm ci --only=production
-
-COPY . .
-
-EXPOSE 3000
-
-CMD ["node", "server.js"]
-```
-
-2. **构建和运行**
-```bash
-docker build -t chat-room .
-docker run -p 3000:3000 --env-file .env chat-room
-```
-
-### 云平台部署
-
-#### Heroku 部署
-
-1. **安装 Heroku CLI**
-```bash
-npm install -g heroku
-```
-
-2. **登录并创建应用**
-```bash
-heroku login
-heroku create your-app-name
-```
-
-3. **配置环境变量**
-```bash
-heroku config:set JWT_SECRET=your-jwt-secret
-heroku config:set ADMIN_USERNAME=admin
-heroku config:set ADMIN_PASSWORD=your-password
-```
-
-4. **部署**
-```bash
-git add .
-git commit -m "Deploy to Heroku"
-git push heroku main
-```
-
-#### Vercel 部署
-
-1. **安装 Vercel CLI**
-```bash
-npm install -g vercel
-```
-
-2. **配置 vercel.json**
-```json
-{
-  "version": 2,
-  "builds": [
-    {
-      "src": "server.js",
-      "use": "@vercel/node"
-    }
-  ],
-  "routes": [
-    {
-      "src": "/(.*)",
-      "dest": "/server.js"
-    }
-  ]
-}
-```
-
-3. **部署**
-```bash
-vercel --prod
-```
-
-#### AWS EC2 部署
-
-1. **连接到 EC2 实例**
-```bash
-ssh -i your-key.pem ubuntu@your-ec2-ip
-```
-
-2. **安装 Node.js**
-```bash
-curl -fsSL https://deb.nodesource.com/setup_16.x | sudo -E bash -
-sudo apt-get install -y nodejs
-```
-
-3. **克隆和配置项目**
-```bash
-git clone <your-repo-url>
-cd chat-room
-npm install
-```
-
-4. **使用 PM2 管理进程**
-```bash
-sudo npm install -g pm2
-pm2 start server.js --name "chat-room"
-pm2 startup
-pm2 save
-```
-
-5. **配置 Nginx（可选）**
-```nginx
-server {
-    listen 80;
-    server_name your-domain.com;
-
-    location / {
-        proxy_pass http://localhost:3000;
-        proxy_http_version 1.1;
-        proxy_set_header Upgrade $http_upgrade;
-        proxy_set_header Connection 'upgrade';
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto $scheme;
-        proxy_cache_bypass $http_upgrade;
-    }
-}
-```
-
-#### 阿里云/腾讯云部署
-
-1. **购买云服务器**
-   - 选择合适的配置（推荐 2核4G 以上）
-   - 安装 Ubuntu 20.04 或 CentOS 8
-
-2. **安装环境**
-```bash
-# Ubuntu
-sudo apt update
-sudo apt install nodejs npm nginx -y
-
-# CentOS
-sudo yum update
-sudo yum install nodejs npm nginx -y
-```
-
-3. **配置防火墙**
-```bash
-# Ubuntu
-sudo ufw allow 22
-sudo ufw allow 80
-sudo ufw allow 443
-sudo ufw enable
-
-# CentOS
-sudo firewall-cmd --permanent --add-port=22/tcp
-sudo firewall-cmd --permanent --add-port=80/tcp
-sudo firewall-cmd --permanent --add-port=443/tcp
-sudo firewall-cmd --reload
-```
-
-4. **配置域名和 SSL**
-```bash
-# 使用 Let's Encrypt
-sudo apt install certbot python3-certbot-nginx
-sudo certbot --nginx -d your-domain.com
-```
-
-## 🔧 配置说明
-
-### 环境变量
-- `PORT`: 服务器端口（默认 3000）
-- `JWT_SECRET`: JWT 密钥（必须设置）
-- `ADMIN_USERNAME`: 管理员用户名
-- `ADMIN_PASSWORD`: 管理员密码
-- `AWS_*`: AWS S3 配置（可选）
-
-### 文件上传配置
-- 支持的文件类型：图片、视频、音频、文档
-- 最大文件大小：50MB（可在 server.js 中修改）
-- 存储方式：本地存储或 AWS S3
-
-## 🐛 故障排除
+## 🚨 故障排除
 
 ### 常见问题
 
-1. **端口被占用**
-```bash
-# 查找占用端口的进程
-lsof -i :3000
-# 杀死进程
-kill -9 <PID>
-```
+#### 1. 管理员登录失败
+**解决方案**: 
+- 检查环境变量 `ADMIN_USERNAME` 和 `ADMIN_PASSWORD`
+- 确认密码格式（支持明文密码）
 
-2. **文件上传失败**
-   - 检查 uploads 目录权限
-   - 确认文件大小限制
-   - 验证 S3 配置（如果使用）
+#### 2. 聊天功能不可用
+**解决方案**:
+- **Vercel**: 正常现象，会自动切换到HTTP轮询模式
+- **其他平台**: 检查WebSocket支持和防火墙设置
 
-3. **Socket.IO 连接失败**
-   - 检查防火墙设置
-   - 确认 WebSocket 支持
-   - 验证代理配置
+#### 3. 数据库连接失败
+**解决方案**:
+- 检查 `DATABASE_URL` 格式
+- 确认数据库服务状态
 
-4. **主题不生效**
-   - 清除浏览器缓存
-   - 检查 CSS 文件路径
-   - 验证主题文件完整性
+## 💰 成本对比
 
-## 📄 许可证
+| 平台 | 免费额度 | 付费起价 | 数据库成本 | 推荐场景 |
+|------|----------|----------|------------|----------|
+| **Railway** | $5/月 | $5/月 | 包含 | 个人项目 |
+| **Render** | 750小时/月 | $7/月 | 外部 | 小型团队 |
+| **Vercel** | 100GB/月 | $20/月 | 外部 | 静态优先 |
+| **Heroku** | 550小时/月 | $7/月 | $9/月 | 企业应用 |
+| **Cloudflare** | 大额度 | $5/月 | 包含 | 全球应用 |
 
-MIT License
+## 📚 文档目录
+
+- **[部署指南](docs/DEPLOYMENT.md)** - 完整的多平台部署指南
+- **[Cloudflare解决方案](docs/CLOUDFLARE.md)** - Cloudflare Pages + Workers方案
+- **[API文档](API.md)** - 完整的API接口说明
+- **[安全指南](SECURITY.md)** - 安全配置和最佳实践
 
 ## 🤝 贡献
 
 欢迎提交 Issue 和 Pull Request！
 
+### 开发指南
+1. Fork 项目
+2. 创建功能分支
+3. 提交更改
+4. 发起 Pull Request
+
+## 📄 许可证
+
+MIT License
+
 ## 📞 支持
 
 如有问题，请通过以下方式联系：
 - 提交 GitHub Issue
-- 发送邮件至：[your-email@example.com]
+- 查看文档目录获取详细帮助
 
 ---
 
 **享受聊天的乐趣！** 🎉
+
+## 🎯 快速链接
+
+- 🚀 [立即部署到Railway](https://railway.app)
+- 🌐 [部署到Render](https://render.com)
+- ☁️ [部署到Vercel](https://vercel.com)
+- 📖 [查看部署指南](docs/DEPLOYMENT.md)
+- 🔧 [Cloudflare高级方案](docs/CLOUDFLARE.md)
