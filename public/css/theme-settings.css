@@ -1,0 +1,406 @@
+/* 主题设置模态框样式 */
+.theme-settings-modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 10000;
+    opacity: 0;
+    visibility: hidden;
+    transition: all 0.3s ease;
+}
+
+.theme-settings-modal.show {
+    opacity: 1;
+    visibility: visible;
+}
+
+.theme-modal-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.5);
+    backdrop-filter: blur(4px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+}
+
+.theme-modal-content {
+    background: rgba(255, 255, 255, 0.95);
+    backdrop-filter: blur(20px);
+    border-radius: 16px;
+    box-shadow: 
+        0 20px 60px rgba(0, 0, 0, 0.15),
+        0 8px 25px rgba(0, 0, 0, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    width: 100%;
+    max-width: 800px;
+    max-height: 90vh;
+    overflow: hidden;
+    transform: scale(0.9);
+    transition: transform 0.3s ease;
+}
+
+.theme-settings-modal.show .theme-modal-content {
+    transform: scale(1);
+}
+
+.theme-modal-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 20px 24px;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+    background: rgba(246, 246, 246, 0.8);
+}
+
+.theme-modal-header h3 {
+    margin: 0;
+    font-size: 18px;
+    font-weight: 600;
+    color: #333;
+}
+
+.theme-modal-close {
+    width: 32px;
+    height: 32px;
+    border: none;
+    background: rgba(0, 0, 0, 0.1);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    font-size: 18px;
+    color: #666;
+    transition: all 0.2s ease;
+}
+
+.theme-modal-close:hover {
+    background: rgba(0, 0, 0, 0.2);
+    color: #333;
+}
+
+.theme-modal-body {
+    padding: 24px;
+    max-height: 80vh;
+    overflow-y: auto;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(0, 0, 0, 0.3) transparent;
+}
+
+.theme-modal-body::-webkit-scrollbar {
+    width: 6px;
+}
+
+.theme-modal-body::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.theme-modal-body::-webkit-scrollbar-thumb {
+    background: rgba(0, 0, 0, 0.3);
+    border-radius: 3px;
+}
+
+.theme-modal-body::-webkit-scrollbar-thumb:hover {
+    background: rgba(0, 0, 0, 0.5);
+}
+
+.theme-section {
+    margin-bottom: 32px;
+}
+
+.theme-section:last-child {
+    margin-bottom: 0;
+}
+
+.theme-section h4 {
+    margin: 0 0 16px 0;
+    font-size: 16px;
+    font-weight: 500;
+    color: #333;
+}
+
+/* 主题网格 */
+.theme-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+    gap: 12px;
+}
+
+.theme-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    padding: 16px 12px;
+    border: 2px solid transparent;
+    border-radius: 12px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    background: rgba(0, 0, 0, 0.02);
+}
+
+.theme-item:hover {
+    background: rgba(0, 0, 0, 0.05);
+    transform: translateY(-2px);
+}
+
+.theme-item.active {
+    border-color: #2196f3;
+    background: rgba(33, 150, 243, 0.1);
+}
+
+.theme-preview {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+}
+
+.theme-item span {
+    font-size: 12px;
+    font-weight: 500;
+    color: #666;
+    text-align: center;
+}
+
+.theme-item.active span {
+    color: #2196f3;
+}
+
+/* 背景网格 */
+.background-grid {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 12px;
+    max-width: 100%;
+    grid-auto-rows: minmax(100px, auto);
+    min-height: 220px;
+}
+
+.background-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    padding: 16px 12px;
+    border: 2px solid transparent;
+    border-radius: 12px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    background: rgba(0, 0, 0, 0.02);
+}
+
+.background-item:hover {
+    background: rgba(0, 0, 0, 0.05);
+    transform: translateY(-2px);
+}
+
+.background-item.active {
+    border-color: #2196f3;
+    background: rgba(33, 150, 243, 0.1);
+}
+
+.background-preview {
+    width: 60px;
+    height: 40px;
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+    border: 1px solid rgba(0, 0, 0, 0.1);
+}
+
+.background-item span {
+    font-size: 12px;
+    font-weight: 500;
+    color: #666;
+    text-align: center;
+}
+
+.background-item.active span {
+    color: #2196f3;
+}
+
+/* 深色主题适配 */
+[data-theme="dark"] .theme-modal-content {
+    background: rgba(33, 33, 33, 0.95);
+    border-color: rgba(255, 255, 255, 0.1);
+}
+
+[data-theme="dark"] .theme-modal-header {
+    background: rgba(66, 66, 66, 0.8);
+    border-color: rgba(255, 255, 255, 0.1);
+}
+
+[data-theme="dark"] .theme-modal-header h3 {
+    color: #ffffff;
+}
+
+[data-theme="dark"] .theme-modal-close {
+    background: rgba(255, 255, 255, 0.1);
+    color: #aaaaaa;
+}
+
+[data-theme="dark"] .theme-modal-close:hover {
+    background: rgba(255, 255, 255, 0.2);
+    color: #ffffff;
+}
+
+[data-theme="dark"] .theme-section h4 {
+    color: #ffffff;
+}
+
+[data-theme="dark"] .theme-item,
+[data-theme="dark"] .background-item {
+    background: rgba(255, 255, 255, 0.05);
+}
+
+[data-theme="dark"] .theme-item:hover,
+[data-theme="dark"] .background-item:hover {
+    background: rgba(255, 255, 255, 0.1);
+}
+
+[data-theme="dark"] .theme-item span,
+[data-theme="dark"] .background-item span {
+    color: #aaaaaa;
+}
+
+[data-theme="dark"] .background-preview {
+    border-color: rgba(255, 255, 255, 0.2);
+}
+
+/* 响应式设计 */
+@media (max-width: 768px) {
+    .theme-modal-content {
+        margin: 20px;
+        max-height: 90vh;
+    }
+    
+    .theme-modal-header {
+        padding: 16px 20px;
+    }
+    
+    .theme-modal-body {
+        padding: 20px;
+    }
+    
+    .theme-grid {
+        grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
+        gap: 10px;
+    }
+    
+    .background-grid {
+        grid-template-columns: repeat(3, 1fr);
+        gap: 10px;
+    }
+    
+    .theme-item,
+    .background-item {
+        padding: 12px 8px;
+    }
+    
+    .theme-preview {
+        width: 32px;
+        height: 32px;
+    }
+    
+    .background-preview {
+        width: 50px;
+        height: 32px;
+    }
+}
+
+/* 主题变量 */
+:root {
+    --theme-primary: #2196f3;
+    --theme-background: #ffffff;
+    --theme-messageOwn: #2196f3;
+    --theme-messageOther: #f1f3f4;
+    --theme-text: #000000;
+    --theme-textSecondary: #70757a;
+}
+
+/* 应用主题变量到现有元素 */
+.message.own .message-content {
+    background: var(--theme-messageOwn) !important;
+}
+
+.message.other .message-content {
+    background: var(--theme-messageOther) !important;
+}
+
+.send-button {
+    background: var(--theme-primary) !important;
+}
+
+.chat-avatar,
+.message-avatar,
+.user-avatar,
+.chat-header-avatar,
+.group-avatar {
+    background: var(--theme-primary) !important;
+}
+
+.chat-item.active {
+    background: rgba(33, 150, 243, 0.1) !important;
+}
+
+.chat-badge {
+    background: var(--theme-primary) !important;
+}
+
+/* 头部按钮渐变效果 */
+.header-btn:hover {
+    background: var(--theme-primary) !important;
+    opacity: 0.8;
+}
+
+/* 主题预览圆形样式 */
+.theme-preview {
+    border: 2px solid rgba(255, 255, 255, 0.3);
+    box-shadow:
+        0 4px 12px rgba(0, 0, 0, 0.15),
+        inset 0 1px 0 rgba(255, 255, 255, 0.2);
+}
+
+/* 深色主题下的文本颜色 */
+[data-theme="dark"] .telegram-layout,
+[data-theme="dark"] .sidebar-left,
+[data-theme="dark"] .chat-main,
+[data-theme="dark"] .sidebar-right {
+    background: var(--theme-background) !important;
+    color: var(--theme-text) !important;
+}
+
+[data-theme="dark"] .chat-title,
+[data-theme="dark"] .chat-header-title,
+[data-theme="dark"] .group-title,
+[data-theme="dark"] .user-name {
+    color: var(--theme-text) !important;
+}
+
+[data-theme="dark"] .chat-subtitle,
+[data-theme="dark"] .chat-header-subtitle,
+[data-theme="dark"] .group-subtitle,
+[data-theme="dark"] .chat-time {
+    color: var(--theme-textSecondary) !important;
+}
+
+[data-theme="dark"] .message.other .message-content {
+    color: var(--theme-text) !important;
+}
+
+[data-theme="dark"] .search-input,
+[data-theme="dark"] #messageText {
+    color: var(--theme-text) !important;
+}
+
+[data-theme="dark"] .search-input::placeholder,
+[data-theme="dark"] #messageText::placeholder {
+    color: var(--theme-textSecondary) !important;
+}

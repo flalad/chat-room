@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>管理员后台 - 私人聊天室</title>
+    <meta name="description" content="私人聊天室管理员后台">
+    
+    <!-- 样式文件 -->
+    <link rel="stylesheet" href="./css/reset.css">
+    <link rel="stylesheet" href="./css/apple-window.css">
+    <link rel="stylesheet" href="./css/components.css">
+    <link rel="stylesheet" href="./css/admin.css">
+</head>
+<body>
+    <!-- 管理员后台容器 -->
+    <div id="adminApp" class="admin-app">
+        <!-- 登录页面 -->
+        <div id="adminLogin" class="admin-login">
+            <div class="login-container">
+                <div class="login-window">
+                    <!-- 窗口标题栏 -->
+                    <div class="window-titlebar">
+                        <div class="window-controls">
+                            <div class="control-btn close"></div>
+                            <div class="control-btn minimize"></div>
+                            <div class="control-btn maximize"></div>
+                        </div>
+                        <div class="window-title">管理员登录</div>
+                    </div>
+                    
+                    <!-- 登录表单 -->
+                    <div class="login-content">
+                        <div class="login-header">
+                            <div class="login-icon">🔐</div>
+                            <h2>管理员后台</h2>
+                            <p class="login-subtitle">请输入管理员凭据</p>
+                        </div>
+                        
+                        <form id="adminLoginForm" class="login-form">
+                            <div class="form-group">
+                                <label for="adminUsername">
+                                    <span class="label-icon">👤</span>
+                                    管理员账号
+                                </label>
+                                <input type="text" id="adminUsername" name="username" required
+                                       placeholder="请输入管理员账号" autocomplete="username">
+                            </div>
+                            
+                            <div class="form-group">
+                                <label for="adminPassword">
+                                    <span class="label-icon">🔒</span>
+                                    管理员密码
+                                </label>
+                                <input type="password" id="adminPassword" name="password" required
+                                       placeholder="请输入管理员密码" autocomplete="current-password">
+                            </div>
+                            
+                            <div class="form-actions">
+                                <button type="submit" class="btn btn-primary btn-full">
+                                    <span class="btn-icon">🚀</span>
+                                    登录后台
+                                </button>
+                            </div>
+                            
+                            <div class="login-links">
+                                <a href="/" class="login-link">
+                                    返回聊天室
+                                </a>
+                            </div>
+                        </form>
+                        
+                        <!-- 错误提示 -->
+                        <div id="adminErrorMessage" class="error-message" style="display: none;"></div>
+                        
+                        <!-- 成功提示 -->
+                        <div id="adminSuccessMessage" class="success-message" style="display: none;"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 管理员面板 -->
+        <div id="adminPanel" class="admin-panel" style="display: none;">
+            <div class="admin-layout">
+                <!-- 侧边栏 -->
+                <div class="admin-sidebar">
+                    <div class="sidebar-header">
+                        <h1 class="sidebar-title">管理后台</h1>
+                        <div class="admin-info">
+                            <span class="admin-name" id="adminName">管理员</span>
+                            <span class="admin-role">Administrator</span>
+                        </div>
+                    </div>
+                    
+                    <nav class="sidebar-nav">
+                        <a href="#dashboard" class="nav-item active" data-page="dashboard">
+                            <svg class="nav-icon" viewBox="0 0 24 24">
+                                <path d="M3 13h8V3H3v10zm0 8h8v-6H3v6zm10 0h8V11h-8v10zm0-18v6h8V3h-8z"/>
+                            </svg>
+                            <span>仪表板</span>
+                        </a>
+                        
+                        <a href="#s3-config" class="nav-item" data-page="s3-config">
+                            <svg class="nav-icon" viewBox="0 0 24 24">
+                                <path d="M19.35 10.04A7.49 7.49 0 0 0 12 4C9.11 4 6.6 5.64 5.35 8.04A5.994 5.994 0 0 0 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96z"/>
+                            </svg>
+                            <span>S3存储配置</span>
+                        </a>
+                        
+                        <a href="#file-management" class="nav-item" data-page="file-management">
+                            <svg class="nav-icon" viewBox="0 0 24 24">
+                                <path d="M10 4H4c-1.11 0-2 .89-2 2v12c0 1.11.89 2 2 2h16c1.11 0 2-.89 2-2V8c0-1.11-.89-2-2-2h-8l-2-2z"/>
+                            </svg>
+                            <span>文件管理</span>
+                        </a>
+                        
+                        <a href="#image-gallery" class="nav-item" data-page="image-gallery">
+                            <svg class="nav-icon" viewBox="0 0 24 24">
+                                <path d="M21 19V5c0-1.1-.9-2-2-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2zM8.5 13.5l2.5 3.01L14.5 12l4.5 6H5l3.5-4.5z"/>
+                            </svg>
+                            <span>图片管理</span>
+                        </a>
+                        
+                        <a href="#user-management" class="nav-item" data-page="user-management">
+                            <svg class="nav-icon" viewBox="0 0 24 24">
+                                <path d="M16 7c0 2.21-1.79 4-4 4s-4-1.79-4-4 1.79-4 4-4 4 1.79 4 4zm-4 7c-2.67 0-8 1.34-8 4v3h16v-3c0-2.66-5.33-4-8-4z"/>
+                            </svg>
+                            <span>用户管理</span>
+                        </a>
+                        
+                        <a href="#system-settings" class="nav-item" data-page="system-settings">
+                            <svg class="nav-icon" viewBox="0 0 24 24">
+                                <path d="M19.14,12.94c0.04-0.3,0.06-0.61,0.06-0.94c0-0.32-0.02-0.64-0.07-0.94l2.03-1.58c0.18-0.14,0.23-0.41,0.12-0.61 l-1.92-3.32c-0.12-0.22-0.37-0.29-0.59-0.22l-2.39,0.96c-0.5-0.38-1.03-0.7-1.62-0.94L14.4,2.81c-0.04-0.24-0.24-0.41-0.48-0.41 h-3.84c-0.24,0-0.43,0.17-0.47,0.41L9.25,5.35C8.66,5.59,8.12,5.92,7.63,6.29L5.24,5.33c-0.22-0.08-0.47,0-0.59,0.22L2.74,8.87 C2.62,9.08,2.66,9.34,2.86,9.48l2.03,1.58C4.84,11.36,4.8,11.69,4.8,12s0.02,0.64,0.07,0.94l-2.03,1.58 c-0.18,0.14-0.23,0.41-0.12,0.61l1.92,3.32c0.12,0.22,0.37,0.29,0.59,0.22l2.39-0.96c0.5,0.38,1.03,0.7,1.62,0.94l0.36,2.54 c0.05,0.24,0.24,0.41,0.48,0.41h3.84c0.24,0,0.44-0.17,0.47-0.41l0.36-2.54c0.59-0.24,1.13-0.56,1.62-0.94l2.39,0.96 c0.22,0.08,0.47,0,0.59-0.22l1.92-3.32c0.12-0.22,0.07-0.47-0.12-0.61L19.14,12.94z M12,15.6c-1.98,0-3.6-1.62-3.6-3.6 s1.62-3.6,3.6-3.6s3.6,1.62,3.6,3.6S13.98,15.6,12,15.6z"/>
+                            </svg>
+                            <span>系统设置</span>
+                        </a>
+                    </nav>
+                    
+                    <div class="sidebar-footer">
+                        <button class="chat-btn" id="gotoChatBtn">
+                            <svg class="nav-icon" viewBox="0 0 24 24">
+                                <path d="M20,2H4A2,2 0 0,0 2,4V22L6,18H20A2,2 0 0,0 22,16V4A2,2 0 0,0 20,2M6,9H18V11H6V9M14,14H6V12H14V14M18,8H6V6H18V8Z"/>
+                            </svg>
+                            <span>前往聊天室</span>
+                        </button>
+                        <button class="logout-btn" id="adminLogoutBtn">
+                            <svg class="nav-icon" viewBox="0 0 24 24">
+                                <path d="M17 7l-1.41 1.41L18.17 11H8v2h10.17l-2.58 2.59L17 17l5-5zM4 5h8V3H4c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h8v-2H4V5z"/>
+                            </svg>
+                            <span>退出登录</span>
+                        </button>
+                    </div>
+                </div>
+                
+                <!-- 主内容区域 -->
+                <div class="admin-main">
+                    <div class="main-header">
+                        <h2 id="pageTitle">仪表板</h2>
+                        <div class="header-actions">
+                            <button class="refresh-btn" id="refreshBtn">
+                                <svg viewBox="0 0 24 24">
+                                    <path d="M17.65 6.35A7.958 7.958 0 0 0 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08A5.99 5.99 0 0 1 12 18c-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"/>
+                                </svg>
+                                刷新
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <div class="main-content" id="mainContent">
+                        <!-- 动态内容将在这里加载 -->
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- JavaScript -->
+    <script src="./js/config.js"></script>
+    <script src="./js/utils.js"></script>
+    <script src="./js/admin.js"></script>
+</body>
+</html>

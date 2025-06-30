@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>登录 - 私人聊天室</title>
+    <meta name="description" content="私人聊天室登录页面">
+    
+    <!-- 样式文件 -->
+    <link rel="stylesheet" href="./css/reset.css">
+    <link rel="stylesheet" href="./css/apple-window.css">
+    <link rel="stylesheet" href="./css/auth.css">
+</head>
+<body>
+    <!-- 登录页面容器 -->
+    <div class="auth-container">
+        <div class="auth-window">
+            <!-- 窗口标题栏 -->
+            <div class="window-titlebar">
+                <div class="window-controls">
+                    <div class="control-btn close"></div>
+                    <div class="control-btn minimize"></div>
+                    <div class="control-btn maximize"></div>
+                </div>
+                <div class="window-title">私人聊天室 - 登录</div>
+            </div>
+            
+            <!-- 登录表单 -->
+            <div class="auth-content">
+                <div class="auth-header">
+                    <div class="auth-icon">🔐</div>
+                    <h2>欢迎回来</h2>
+                    <p class="auth-subtitle">请输入您的登录凭据</p>
+                </div>
+                
+                <form id="loginForm" class="auth-form">
+                    <div class="form-group">
+                        <label for="username">
+                            <span class="label-icon">👤</span>
+                            用户名
+                        </label>
+                        <input type="text" id="username" name="username" required
+                               placeholder="请输入用户名" autocomplete="username">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="password">
+                            <span class="label-icon">🔒</span>
+                            密码
+                        </label>
+                        <input type="password" id="password" name="password" required
+                               placeholder="请输入密码" autocomplete="current-password">
+                    </div>
+                    
+                    <div class="form-actions">
+                        <button type="submit" class="btn btn-primary">
+                            <span class="btn-icon">🚀</span>
+                            立即登录
+                        </button>
+                    </div>
+                    
+                    <div class="auth-links">
+                        <a href="register.html" class="auth-link">
+                            还没有账户？立即注册
+                        </a>
+                    </div>
+                </form>
+                
+                <!-- 错误提示 -->
+                <div id="errorMessage" class="error-message" style="display: none;"></div>
+                
+                <!-- 成功提示 -->
+                <div id="successMessage" class="success-message" style="display: none;"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- JavaScript -->
+    <script src="./js/config.js"></script>
+    <script src="./js/utils.js"></script>
+    <script src="./js/auth-page.js"></script>
+</body>
+</html>

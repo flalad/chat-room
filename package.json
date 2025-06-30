@@ -1,0 +1,40 @@
+{
+  "name": "private-chat-room",
+  "version": "1.0.0",
+  "description": "一个现代化的私人聊天室应用，支持实时消息传递和文件分享",
+  "main": "server.js",
+  "scripts": {
+    "dev": "nodemon server.js",
+    "build": "echo 'Build completed'",
+    "start": "node server.js",
+    "deploy:vercel": "vercel --prod",
+    "deploy:netlify": "netlify deploy --prod --dir=public"
+  },
+  "dependencies": {
+    "express": "^4.18.2",
+    "socket.io": "^4.7.2",
+    "cors": "^2.8.5",
+    "bcryptjs": "^2.4.3",
+    "jsonwebtoken": "^9.0.2",
+    "aws-sdk": "^2.1490.0"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.1"
+  },
+  "keywords": [
+    "chat",
+    "private-chat",
+    "socket.io",
+    "real-time",
+    "file-sharing",
+    "s3-storage",
+    "cloudflare-pages",
+    "vercel",
+    "netlify"
+  ],
+  "author": "Your Name",
+  "license": "MIT",
+  "engines": {
+    "node": ">=14.0.0"
+  }
+}

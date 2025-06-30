@@ -1,0 +1,414 @@
+/* 苹果风格窗口样式 */
+.window-container {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 90vw;
+    height: 85vh;
+    max-width: 1200px;
+    max-height: 800px;
+    min-width: 800px;
+    min-height: 600px;
+    background: rgba(255, 255, 255, 0.95);
+    backdrop-filter: blur(20px);
+    border-radius: 12px;
+    box-shadow: 
+        0 20px 60px rgba(0, 0, 0, 0.15),
+        0 8px 25px rgba(0, 0, 0, 0.1),
+        inset 0 1px 0 rgba(255, 255, 255, 0.8);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+}
+
+/* 窗口标题栏 */
+.window-titlebar {
+    height: 44px;
+    background: rgba(246, 246, 246, 0.8);
+    backdrop-filter: blur(20px);
+    border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 16px;
+    position: relative;
+    flex-shrink: 0;
+}
+
+/* 窗口控制按钮 */
+.window-controls {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+}
+
+.control-btn {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.control-btn.close {
+    background: #ff5f57;
+}
+
+.control-btn.minimize {
+    background: #ffbd2e;
+}
+
+.control-btn.maximize {
+    background: #28ca42;
+}
+
+.control-btn:hover {
+    transform: scale(1.1);
+    filter: brightness(1.1);
+}
+
+/* 窗口标题 */
+.window-title {
+    position: absolute;
+    left: 50%;
+    transform: translateX(-50%);
+    font-weight: 600;
+    font-size: 14px;
+    color: #333;
+    user-select: none;
+}
+
+/* 窗口操作区域 */
+.window-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+/* 登录按钮 */
+.login-btn {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 12px;
+    background: rgba(7, 193, 96, 0.1);
+    color: #07c160;
+    border-radius: 6px;
+    font-size: 12px;
+    font-weight: 500;
+    transition: all 0.2s ease;
+    border: 1px solid rgba(7, 193, 96, 0.2);
+    cursor: pointer;
+}
+
+.login-btn:hover {
+    background: rgba(7, 193, 96, 0.15);
+    transform: translateY(-1px);
+}
+
+.login-btn svg {
+    width: 14px;
+    height: 14px;
+}
+
+/* 用户菜单容器 */
+.user-menu-container {
+    position: relative;
+}
+
+/* 用户信息显示 */
+.user-info-display {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 4px 8px;
+    background: rgba(0, 0, 0, 0.05);
+    border: 1px solid rgba(0, 0, 0, 0.1);
+    border-radius: 8px;
+    color: #333;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.user-info-display:hover {
+    background: rgba(0, 0, 0, 0.08);
+    border-color: rgba(0, 0, 0, 0.15);
+}
+
+/* 用户头像 */
+.user-avatar {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    background: rgba(7, 193, 96, 0.1);
+    border-radius: 50%;
+    flex-shrink: 0;
+}
+
+.user-avatar svg {
+    color: #07c160;
+    opacity: 0.9;
+}
+
+/* 用户详情 */
+.user-details {
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+    min-width: 0;
+}
+
+.user-name {
+    font-size: 12px;
+    font-weight: 500;
+    color: #333;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 100px;
+}
+
+.user-role {
+    font-size: 10px;
+    color: rgba(0, 0, 0, 0.6);
+    white-space: nowrap;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.user-role.admin {
+    color: #ff6b35;
+    font-weight: 500;
+}
+
+.user-role.admin::before {
+    content: "👑";
+    font-size: 8px;
+}
+
+/* 菜单切换按钮 */
+.user-menu-toggle {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 20px;
+    height: 20px;
+    background: none;
+    border: none;
+    color: rgba(0, 0, 0, 0.5);
+    cursor: pointer;
+    transition: all 0.2s ease;
+    border-radius: 4px;
+    pointer-events: none; /* 禁用点击，只保留视觉效果 */
+}
+
+.user-menu-container:hover .user-menu-toggle {
+    background: rgba(0, 0, 0, 0.05);
+    color: rgba(0, 0, 0, 0.8);
+}
+
+.user-menu-toggle .dropdown-icon {
+    transition: transform 0.2s ease;
+}
+
+.user-menu-container:hover .user-menu-toggle .dropdown-icon {
+    transform: rotate(180deg);
+}
+
+/* 用户下拉菜单 */
+.user-dropdown {
+    position: absolute !important;
+    top: calc(100% + 2px) !important;
+    right: 0 !important;
+    min-width: 180px !important;
+    background: rgba(255, 255, 255, 0.95) !important;
+    backdrop-filter: blur(20px) !important;
+    border: 1px solid rgba(0, 0, 0, 0.1) !important;
+    border-radius: 8px !important;
+    box-shadow:
+        0 10px 30px rgba(0, 0, 0, 0.15),
+        0 4px 15px rgba(0, 0, 0, 0.1) !important;
+    opacity: 0 !important;
+    visibility: hidden !important;
+    transform: translateY(-10px) !important;
+    transition: all 0.2s ease !important;
+    z-index: 1000 !important;
+    pointer-events: none !important;
+    display: block !important; /* 强制显示 */
+}
+
+/* 创建一个不可见的桥接区域，确保悬停连续性 */
+.user-dropdown::before {
+    content: '';
+    position: absolute;
+    top: -2px;
+    left: 0;
+    right: 0;
+    height: 2px;
+    background: transparent;
+}
+
+/* 下拉菜单样式 - 修复z-index层级问题 */
+.user-dropdown {
+    position: absolute;
+    top: calc(100% + 8px);
+    right: 0;
+    background: rgba(255, 255, 255, 0.95);
+    backdrop-filter: blur(20px);
+    border-radius: 12px;
+    box-shadow:
+        0 10px 30px rgba(0, 0, 0, 0.15),
+        0 4px 15px rgba(0, 0, 0, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    min-width: 180px;
+    z-index: 999999; /* 超高z-index确保在最顶层 */
+    padding: 8px 0;
+    
+    /* 默认隐藏 */
+    opacity: 0;
+    visibility: hidden;
+    transform: translateY(-10px);
+    transition: all 0.2s ease;
+}
+
+/* 悬停时显示下拉菜单 */
+.user-menu-container:hover .user-dropdown {
+    opacity: 1;
+    visibility: visible;
+    transform: translateY(0);
+}
+
+/* 确保窗口标题栏有正确的z-index */
+.window-titlebar {
+    position: relative;
+    z-index: 100;
+}
+
+/* 确保用户菜单容器有正确的定位和z-index */
+.user-menu-container {
+    position: relative;
+    z-index: 200;
+}
+
+/* 下拉菜单项样式 */
+.dropdown-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 16px;
+    color: #333;
+    text-decoration: none;
+    transition: all 0.2s ease;
+    cursor: pointer;
+    border-radius: 8px;
+    margin: 2px 8px;
+}
+
+.dropdown-item:hover {
+    background: rgba(102, 126, 234, 0.1);
+    color: #667eea;
+}
+
+.dropdown-item svg {
+    flex-shrink: 0;
+    opacity: 0.7;
+}
+
+.dropdown-item:hover svg {
+    opacity: 1;
+}
+
+/* 悬停时显示下拉菜单 */
+.user-menu-container:hover .user-dropdown {
+    opacity: 1 !important;
+    visibility: visible !important;
+    transform: translateY(0) !important;
+    pointer-events: auto !important;
+}
+
+/* 保持兼容性的show类 */
+.user-dropdown.show {
+    opacity: 1;
+    visibility: visible;
+    transform: translateY(0);
+    pointer-events: auto;
+}
+
+.dropdown-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 14px;
+    color: #333;
+    font-size: 12px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+}
+
+.dropdown-item:last-child {
+    border-bottom: none;
+}
+
+.dropdown-item:hover {
+    background: rgba(7, 193, 96, 0.1);
+    color: #07c160;
+}
+
+.dropdown-item svg {
+    opacity: 0.7;
+    flex-shrink: 0;
+}
+
+.dropdown-item:hover svg {
+    opacity: 1;
+}
+
+/* 管理员菜单项特殊样式 */
+#adminPanelMenuItem {
+    color: #ff6b35;
+}
+
+#adminPanelMenuItem:hover {
+    background: rgba(255, 107, 53, 0.1);
+    color: #ff6b35;
+}
+
+/* 响应式设计 */
+@media (max-width: 1024px) {
+    .window-container {
+        width: 95vw;
+        height: 90vh;
+        min-width: 600px;
+        min-height: 500px;
+    }
+}
+
+@media (max-width: 768px) {
+    .window-container {
+        width: 100vw;
+        height: 100vh;
+        border-radius: 0;
+        min-width: auto;
+        min-height: auto;
+    }
+    
+    .window-titlebar {
+        height: 50px;
+        padding: 0 20px;
+    }
+    
+    .window-title {
+        font-size: 16px;
+    }
+    
+    .control-btn {
+        width: 14px;
+        height: 14px;
+    }
+}

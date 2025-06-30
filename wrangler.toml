@@ -1,0 +1,37 @@
+name = "private-chat-room"
+main = "server.js"
+compatibility_date = "2023-12-01"
+
+[env.production]
+name = "private-chat-room"
+
+[env.development]
+name = "private-chat-room-dev"
+
+[[env.production.routes]]
+pattern = "*/*"
+zone_name = "your-domain.com"
+
+[build]
+command = "npm run build"
+cwd = "."
+watch_dir = "public"
+
+[build.upload]
+format = "modules"
+dir = "public"
+main = "./server.js"
+
+[vars]
+NODE_ENV = "production"
+
+# WebSocket 支持需要 Durable Objects
+# 这里提供基本配置，实际使用时需要根据 Cloudflare Workers 的要求调整
+
+[[durable_objects.bindings]]
+name = "CHAT_ROOM"
+class_name = "ChatRoom"
+
+[[migrations]]
+tag = "v1"
+new_classes = ["ChatRoom"]

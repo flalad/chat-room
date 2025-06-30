@@ -1,0 +1,492 @@
+/* 响应式设计 */
+
+/* 大屏幕 (1200px+) */
+@media (min-width: 1200px) {
+    .window-container {
+        max-width: 1400px;
+        max-height: 900px;
+    }
+    
+    .online-users {
+        width: 240px;
+    }
+    
+    .message-list {
+        margin-right: 240px;
+        padding: 24px 32px 120px 32px;
+    }
+    
+    .input-container {
+        margin-right: 240px;
+        padding: 20px 32px;
+    }
+    
+    .message {
+        max-width: 60%;
+    }
+}
+
+/* 中等屏幕 (768px - 1199px) */
+@media (min-width: 768px) and (max-width: 1199px) {
+    .window-container {
+        width: 95vw;
+        height: 90vh;
+        min-width: 700px;
+    }
+    
+    .online-users {
+        width: 180px;
+    }
+    
+    .message-list {
+        margin-right: 180px;
+        padding: 20px 24px 100px 24px;
+    }
+    
+    .input-container {
+        margin-right: 180px;
+        padding: 16px 24px;
+    }
+    
+    .message {
+        max-width: 75%;
+    }
+    
+    .modal-content {
+        max-width: 500px;
+    }
+}
+
+/* 小屏幕 (481px - 767px) */
+@media (min-width: 481px) and (max-width: 767px) {
+    .window-container {
+        width: 100vw;
+        height: 100vh;
+        border-radius: 0;
+        min-width: auto;
+        min-height: auto;
+    }
+    
+    .window-titlebar {
+        height: 50px;
+        padding: 0 16px;
+    }
+    
+    .window-title {
+        font-size: 16px;
+    }
+    
+    .online-users {
+        position: fixed;
+        top: 50px;
+        right: -220px;
+        width: 220px;
+        height: calc(100vh - 50px);
+        transition: right 0.3s ease;
+        box-shadow: -5px 0 15px rgba(0, 0, 0, 0.2);
+        z-index: 1000;
+    }
+    
+    .online-users.show {
+        right: 0;
+    }
+    
+    .message-list {
+        margin-right: 0;
+        padding: 16px 16px 100px 16px;
+    }
+    
+    .input-container {
+        margin-right: 0;
+        padding: 12px 16px;
+    }
+    
+    .message {
+        max-width: 85%;
+    }
+    
+    .message-content {
+        padding: 10px 14px;
+        font-size: 13px;
+    }
+    
+    .modal-content {
+        width: 95%;
+        max-width: none;
+    }
+    
+    .modal-body {
+        padding: 20px;
+    }
+    
+    .form-actions {
+        flex-direction: column;
+    }
+    
+    .btn-primary,
+    .btn-secondary {
+        width: 100%;
+    }
+    
+    /* 添加用户列表切换按钮 */
+    .users-toggle {
+        position: fixed;
+        top: 60px;
+        right: 16px;
+        width: 40px;
+        height: 40px;
+        background: rgba(7, 193, 96, 0.9);
+        color: white;
+        border: none;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 999;
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+        transition: all 0.2s ease;
+    }
+    
+    .users-toggle:hover {
+        background: #06ad56;
+        transform: scale(1.1);
+    }
+    
+    .users-toggle svg {
+        width: 20px;
+        height: 20px;
+    }
+}
+
+/* 超小屏幕 (320px - 480px) */
+@media (max-width: 480px) {
+    .window-container {
+        width: 100vw;
+        height: 100vh;
+        border-radius: 0;
+        min-width: auto;
+        min-height: auto;
+    }
+    
+    .window-titlebar {
+        height: 44px;
+        padding: 0 12px;
+    }
+    
+    .window-title {
+        font-size: 14px;
+    }
+    
+    .control-btn {
+        width: 10px;
+        height: 10px;
+    }
+    
+    .login-btn,
+    .user-menu-btn {
+        padding: 4px 8px;
+        font-size: 11px;
+    }
+    
+    .login-btn svg,
+    .user-menu-btn svg {
+        width: 12px;
+        height: 12px;
+    }
+    
+    .online-users {
+        position: fixed;
+        top: 44px;
+        right: -200px;
+        width: 200px;
+        height: calc(100vh - 44px);
+        transition: right 0.3s ease;
+        box-shadow: -5px 0 15px rgba(0, 0, 0, 0.2);
+        z-index: 1000;
+    }
+    
+    .online-users.show {
+        right: 0;
+    }
+    
+    .users-header {
+        padding: 10px 12px;
+        font-size: 11px;
+    }
+    
+    .user-item {
+        padding: 6px 10px;
+        font-size: 11px;
+    }
+    
+    .user-avatar {
+        width: 20px;
+        height: 20px;
+        font-size: 8px;
+    }
+    
+    .message-list {
+        margin-right: 0;
+        padding: 12px 12px 90px 12px;
+        gap: 12px;
+    }
+    
+    .message {
+        max-width: 90%;
+    }
+    
+    .message-header {
+        font-size: 10px;
+    }
+    
+    .message-avatar {
+        width: 18px;
+        height: 18px;
+        font-size: 8px;
+    }
+    
+    .message-content {
+        padding: 8px 12px;
+        font-size: 13px;
+        border-radius: 16px;
+    }
+    
+    .message.own .message-content {
+        border-bottom-right-radius: 4px;
+    }
+    
+    .message.other .message-content {
+        border-bottom-left-radius: 4px;
+    }
+    
+    .message-time {
+        font-size: 9px;
+    }
+    
+    .input-container {
+        margin-right: 0;
+        padding: 10px 12px;
+        min-height: 60px;
+    }
+    
+    .input-field-container {
+        border-radius: 18px;
+    }
+    
+    #messageText {
+        padding: 10px 14px;
+        font-size: 13px;
+    }
+    
+    .send-button {
+        padding: 10px;
+    }
+    
+    .send-icon {
+        width: 16px;
+        height: 16px;
+    }
+    
+    .modal-content {
+        width: 95%;
+        margin: 20px;
+    }
+    
+    .modal-header {
+        padding: 16px 20px 12px;
+    }
+    
+    .modal-header h2 {
+        font-size: 16px;
+    }
+    
+    .modal-body {
+        padding: 16px 20px 20px;
+    }
+    
+    .form-group {
+        margin-bottom: 16px;
+    }
+    
+    .form-group label {
+        font-size: 13px;
+        margin-bottom: 4px;
+    }
+    
+    .form-group input {
+        padding: 10px 12px;
+        font-size: 13px;
+    }
+    
+    .form-actions {
+        flex-direction: column;
+        gap: 8px;
+        margin-top: 20px;
+    }
+    
+    .btn-primary,
+    .btn-secondary {
+        width: 100%;
+        padding: 10px 20px;
+        font-size: 13px;
+    }
+    
+    .connection-status {
+        top: 10px;
+        right: 10px;
+        padding: 6px 10px;
+        font-size: 11px;
+    }
+    
+    .status-dot {
+        width: 6px;
+        height: 6px;
+    }
+    
+    .notification {
+        top: 10px;
+        padding: 10px 16px;
+        font-size: 13px;
+        max-width: 90%;
+    }
+    
+    .users-toggle {
+        top: 54px;
+        right: 12px;
+        width: 36px;
+        height: 36px;
+    }
+    
+    .users-toggle svg {
+        width: 18px;
+        height: 18px;
+    }
+}
+
+/* 超宽屏幕 (1400px+) */
+@media (min-width: 1400px) {
+    .window-container {
+        max-width: 1600px;
+        max-height: 1000px;
+    }
+    
+    .online-users {
+        width: 280px;
+    }
+    
+    .message-list {
+        margin-right: 280px;
+        padding: 32px 40px 140px 40px;
+    }
+    
+    .input-container {
+        margin-right: 280px;
+        padding: 24px 40px;
+    }
+    
+    .message {
+        max-width: 50%;
+    }
+    
+    .message-content {
+        font-size: 15px;
+        padding: 14px 18px;
+    }
+}
+
+/* 打印样式 */
+@media print {
+    .window-container {
+        position: static;
+        transform: none;
+        width: 100%;
+        height: auto;
+        max-width: none;
+        max-height: none;
+        box-shadow: none;
+        border: 1px solid #ccc;
+    }
+    
+    .window-titlebar,
+    .online-users,
+    .input-container,
+    .connection-status,
+    .modal {
+        display: none !important;
+    }
+    
+    .message-list {
+        margin-right: 0;
+        padding: 20px;
+        overflow: visible;
+        height: auto;
+    }
+    
+    .message {
+        break-inside: avoid;
+        margin-bottom: 10px;
+    }
+    
+    .message-content {
+        background: #f5f5f5 !important;
+        color: #333 !important;
+        border: 1px solid #ddd;
+    }
+}
+
+/* 高对比度模式 */
+@media (prefers-contrast: high) {
+    .window-container {
+        border: 2px solid #000;
+        background: #fff;
+    }
+    
+    .window-titlebar {
+        background: #f0f0f0;
+        border-bottom: 2px solid #000;
+    }
+    
+    .message-content {
+        border: 1px solid #000;
+    }
+    
+    .message.own .message-content {
+        background: #000;
+        color: #fff;
+    }
+    
+    .message.other .message-content {
+        background: #fff;
+        color: #000;
+    }
+    
+    .input-field-container {
+        border: 2px solid #000;
+    }
+    
+    .send-button {
+        background: #000;
+        color: #fff;
+    }
+}
+
+/* 减少动画模式 */
+@media (prefers-reduced-motion: reduce) {
+    * {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+    }
+    
+    .message {
+        animation: none;
+    }
+    
+    .modal-content {
+        transform: none;
+    }
+    
+    .notification {
+        transform: translateX(-50%);
+    }
+}
