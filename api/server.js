@@ -19,7 +19,7 @@ const io = socketIo(server, {
 // 中间件
 app.use(cors());
 app.use(express.json());
-app.use(express.static(path.join(__dirname, 'public')));
+app.use(express.static(path.join(__dirname, '..', 'public')));
 
 // 配置
 const PORT = process.env.PORT || 3000;
@@ -41,13 +41,13 @@ const adminConfig = {
 
 // 检查生产环境管理员配置
 if (process.env.NODE_ENV === 'production' && (!adminConfig.username || !adminConfig.password)) {
-    console.error('❌ 生产环境错误: 必须设置 ADMIN_USERNAME 和 ADMIN_PASSWORD_HASH 环境变量');
-    console.error('请设置以下环境变量:');
-    console.error('  ADMIN_USERNAME=your_admin_username');
-    console.error('  ADMIN_PASSWORD_HASH=your_bcrypt_hashed_password');
-    console.error('可以使用以下命令生成密码哈希:');
-    console.error('  node -e "console.log(require(\'bcryptjs\').hashSync(\'your_password\', 10))"');
-    process.exit(1);
+    console.warn('⚠️ 生产环境警告: 建议设置 ADMIN_USERNAME 和 ADMIN_PASSWORD_HASH 环境变量');
+    console.warn('请设置以下环境变量:');
+    console.warn('  ADMIN_USERNAME=your_admin_username');
+    console.warn('  ADMIN_PASSWORD_HASH=your_bcrypt_hashed_password');
+    console.warn('可以使用以下命令生成密码哈希:');
+    console.warn('  node -e "console.log(require(\'bcryptjs\').hashSync(\'your_password\', 10))"');
+    console.warn('当前使用默认管理员配置，请尽快更改！');
 }
 
 // 系统设置
@@ -747,28 +747,33 @@ app.use((err, req, res, next) => {
 
 // 404处理
 app.use((req, res) => {
-    res.status(404).sendFile(path.join(__dirname, 'public', 'index.html'));
+    res.status(404).sendFile(path.join(__dirname, '..', 'public', 'index.html'));
 });
 
-// 启动服务器
-server.listen(PORT, () => {
-    console.log(`服务器运行在端口 ${PORT}`);
-    console.log(`访问地址: http://localhost:${PORT}`);
-});
+// 导出app供Vercel使用
+module.exports = app;
 
-// 优雅关闭
-process.on('SIGTERM', () => {
-    console.log('收到SIGTERM信号，正在关闭服务器...');
-    server.close(() => {
-        console.log('服务器已关闭');
-        process.exit(0);
+// 如果直接运行此文件，启动服务器
+if (require.main === module) {
+    server.listen(PORT, () => {
+        console.log(`服务器运行在端口 ${PORT}`);
+        console.log(`访问地址: http://localhost:${PORT}`);
     });
-});
 
-process.on('SIGINT', () => {
-    console.log('收到SIGINT信号，正在关闭服务器...');
-    server.close(() => {
-        console.log('服务器已关闭');
-        process.exit(0);
+    // 优雅关闭
+    process.on('SIGTERM', () => {
+        console.log('收到SIGTERM信号，正在关闭服务器...');
+        server.close(() => {
+            console.log('服务器已关闭');
+            process.exit(0);
+        });
     });
-});
+
+    process.on('SIGINT', () => {
+        console.log('收到SIGINT信号，正在关闭服务器...');
+        server.close(() => {
+            console.log('服务器已关闭');
+            process.exit(0);
+        });
+    });
+}

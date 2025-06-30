@@ -4,15 +4,15 @@
   "rewrites": [
     {
       "source": "/socket.io/(.*)",
-      "destination": "/api/server"
+      "destination": "/api"
     },
     {
       "source": "/api/(.*)",
-      "destination": "/api/server"
+      "destination": "/api"
     }
   ],
   "functions": {
-    "api/server.js": {
+    "api/index.js": {
       "maxDuration": 30
     }
   },
