@@ -344,18 +344,21 @@ class AdminPanel {
                     <div class="form-row">
                         <div class="form-group-admin">
                             <label for="s3Provider">存储提供商</label>
-                            <select id="s3Provider" name="provider" required>
+                            <select id="s3Provider" name="provider" required onchange="adminPanel.handleProviderChange()">
                                 <option value="">请选择存储提供商</option>
                                 <option value="aws">Amazon S3</option>
+                                <option value="cloudflare">Cloudflare R2</option>
                                 <option value="aliyun">阿里云OSS</option>
                                 <option value="tencent">腾讯云COS</option>
                                 <option value="qiniu">七牛云</option>
                                 <option value="minio">MinIO</option>
+                                <option value="other">其他S3兼容服务</option>
                             </select>
                         </div>
                         <div class="form-group-admin">
                             <label for="s3Region">区域</label>
                             <input type="text" id="s3Region" name="region" placeholder="如: us-east-1">
+                            <small class="form-help" id="regionHelp">根据选择的提供商，区域格式可能不同</small>
                         </div>
                     </div>
                     
@@ -363,10 +366,12 @@ class AdminPanel {
                         <div class="form-group-admin">
                             <label for="s3AccessKey">Access Key</label>
                             <input type="text" id="s3AccessKey" name="accessKey" required>
+                            <small class="form-help" id="accessKeyHelp">访问密钥ID</small>
                         </div>
                         <div class="form-group-admin">
                             <label for="s3SecretKey">Secret Key</label>
                             <input type="password" id="s3SecretKey" name="secretKey" required>
+                            <small class="form-help" id="secretKeyHelp">访问密钥</small>
                         </div>
                     </div>
                     
@@ -374,10 +379,35 @@ class AdminPanel {
                         <div class="form-group-admin">
                             <label for="s3Bucket">存储桶名称</label>
                             <input type="text" id="s3Bucket" name="bucket" required>
+                            <small class="form-help">存储桶必须已经存在</small>
                         </div>
                         <div class="form-group-admin">
-                            <label for="s3Endpoint">自定义端点 (可选)</label>
+                            <label for="s3Endpoint">自定义端点</label>
                             <input type="url" id="s3Endpoint" name="endpoint" placeholder="https://s3.example.com">
+                            <small class="form-help" id="endpointHelp">某些提供商需要自定义端点</small>
+                        </div>
+                    </div>
+                    
+                    <div class="form-row">
+                        <div class="form-group-admin">
+                            <label for="s3Directory">存储目录 (可选)</label>
+                            <input type="text" id="s3Directory" name="directory" placeholder="chat-files/" value="chat-files/">
+                            <small class="form-help">文件存储的子目录，以/结尾</small>
+                        </div>
+                        <div class="form-group-admin">
+                            <label for="storageLimit">存储容量限制 (MB)</label>
+                            <input type="number" id="storageLimit" name="storageLimit" min="0" placeholder="0 = 无限制">
+                            <small class="form-help">0表示无限制，设置后将限制总存储使用量</small>
+                        </div>
+                    </div>
+                    
+                    <div class="form-row">
+                        <div class="form-group-admin full-width">
+                            <label>
+                                <input type="checkbox" id="enableCDN" name="enableCDN">
+                                启用CDN加速 (如果支持)
+                            </label>
+                            <small class="form-help">某些提供商支持CDN加速访问</small>
                         </div>
                     </div>
                     
@@ -387,10 +417,18 @@ class AdminPanel {
                     </div>
                 </form>
             </div>
+            
+            <div class="form-section" style="margin-top: 2rem;">
+                <h3 class="section-title">存储使用情况</h3>
+                <div id="storageUsage" class="storage-usage">
+                    <div class="loading-spinner"></div> 正在加载存储使用情况...
+                </div>
+            </div>
         `;
 
         // 加载现有配置
         this.loadS3ConfigData();
+        this.loadStorageUsage();
 
         // 绑定表单提交事件
         document.getElementById('s3ConfigForm').addEventListener('submit', (e) => this.saveS3Config(e));
@@ -480,6 +518,192 @@ class AdminPanel {
         } catch (error) {
             console.error('测试S3连接失败:', error);
             this.showMessage('连接测试失败，请重试', 'error');
+        }
+    }
+
+    // 处理存储提供商变化
+    handleProviderChange() {
+        const provider = document.getElementById('s3Provider').value;
+        const regionInput = document.getElementById('s3Region');
+        const endpointInput = document.getElementById('s3Endpoint');
+        const regionHelp = document.getElementById('regionHelp');
+        const endpointHelp = document.getElementById('endpointHelp');
+        const accessKeyHelp = document.getElementById('accessKeyHelp');
+        const secretKeyHelp = document.getElementById('secretKeyHelp');
+
+        // 根据提供商设置默认值和帮助文本
+        switch (provider) {
+            case 'aws':
+                regionInput.placeholder = 'us-east-1';
+                endpointInput.value = '';
+                endpointInput.placeholder = '留空使用默认AWS端点';
+                regionHelp.textContent = 'AWS区域，如: us-east-1, eu-west-1';
+                endpointHelp.textContent = '留空使用默认AWS S3端点';
+                accessKeyHelp.textContent = 'AWS Access Key ID';
+                secretKeyHelp.textContent = 'AWS Secret Access Key';
+                break;
+                
+            case 'cloudflare':
+                regionInput.placeholder = 'auto';
+                regionInput.value = 'auto';
+                endpointInput.placeholder = 'https://[account-id].r2.cloudflarestorage.com';
+                regionHelp.textContent = 'Cloudflare R2通常使用 "auto"';
+                endpointHelp.textContent = '必填：您的Cloudflare R2端点URL';
+                accessKeyHelp.textContent = 'R2 Token ID';
+                secretKeyHelp.textContent = 'R2 Token Secret';
+                break;
+                
+            case 'aliyun':
+                regionInput.placeholder = 'oss-cn-hangzhou';
+                endpointInput.placeholder = 'https://oss-cn-hangzhou.aliyuncs.com';
+                regionHelp.textContent = '阿里云区域，如: oss-cn-hangzhou';
+                endpointHelp.textContent = '阿里云OSS端点URL';
+                accessKeyHelp.textContent = 'AccessKey ID';
+                secretKeyHelp.textContent = 'AccessKey Secret';
+                break;
+                
+            case 'tencent':
+                regionInput.placeholder = 'ap-beijing';
+                endpointInput.placeholder = 'https://cos.ap-beijing.myqcloud.com';
+                regionHelp.textContent = '腾讯云区域，如: ap-beijing';
+                endpointHelp.textContent = '腾讯云COS端点URL';
+                accessKeyHelp.textContent = 'SecretId';
+                secretKeyHelp.textContent = 'SecretKey';
+                break;
+                
+            case 'qiniu':
+                regionInput.placeholder = 'z0';
+                endpointInput.placeholder = 'https://s3-cn-east-1.qiniucs.com';
+                regionHelp.textContent = '七牛云区域代码，如: z0, z1, z2';
+                endpointHelp.textContent = '七牛云S3兼容端点';
+                accessKeyHelp.textContent = 'Access Key';
+                secretKeyHelp.textContent = 'Secret Key';
+                break;
+                
+            case 'minio':
+                regionInput.placeholder = 'us-east-1';
+                endpointInput.placeholder = 'https://minio.example.com';
+                regionHelp.textContent = 'MinIO区域，通常为 us-east-1';
+                endpointHelp.textContent = '必填：您的MinIO服务器地址';
+                accessKeyHelp.textContent = 'MinIO Access Key';
+                secretKeyHelp.textContent = 'MinIO Secret Key';
+                break;
+                
+            case 'other':
+                regionInput.placeholder = 'us-east-1';
+                endpointInput.placeholder = 'https://s3.example.com';
+                regionHelp.textContent = '根据服务商要求填写区域';
+                endpointHelp.textContent = '必填：S3兼容服务的端点URL';
+                accessKeyHelp.textContent = '服务商提供的Access Key';
+                secretKeyHelp.textContent = '服务商提供的Secret Key';
+                break;
+                
+            default:
+                regionInput.placeholder = '如: us-east-1';
+                endpointInput.placeholder = 'https://s3.example.com';
+                regionHelp.textContent = '根据选择的提供商，区域格式可能不同';
+                endpointHelp.textContent = '某些提供商需要自定义端点';
+                accessKeyHelp.textContent = '访问密钥ID';
+                secretKeyHelp.textContent = '访问密钥';
+        }
+    }
+
+    // 加载存储使用情况
+    async loadStorageUsage() {
+        try {
+            const response = await fetch('/api/admin/storage-usage', {
+                headers: {
+                    'Authorization': `Bearer ${this.adminToken}`
+                }
+            });
+
+            if (response.ok) {
+                const data = await response.json();
+                this.renderStorageUsage(data);
+            } else {
+                document.getElementById('storageUsage').innerHTML = '<p>无法加载存储使用情况</p>';
+            }
+        } catch (error) {
+            console.error('加载存储使用情况失败:', error);
+            document.getElementById('storageUsage').innerHTML = '<p>加载失败</p>';
+        }
+    }
+
+    // 渲染存储使用情况
+    renderStorageUsage(data) {
+        const storageUsageEl = document.getElementById('storageUsage');
+        const usedMB = Math.round((data.used || 0) / (1024 * 1024));
+        const limitMB = data.limit || 0;
+        const percentage = limitMB > 0 ? Math.round((usedMB / limitMB) * 100) : 0;
+        
+        let progressBarClass = 'progress-bar';
+        if (percentage > 90) progressBarClass += ' danger';
+        else if (percentage > 70) progressBarClass += ' warning';
+        else progressBarClass += ' success';
+
+        storageUsageEl.innerHTML = `
+            <div class="storage-stats">
+                <div class="storage-stat">
+                    <div class="stat-label">已使用</div>
+                    <div class="stat-value">${this.formatFileSize(data.used || 0)}</div>
+                </div>
+                <div class="storage-stat">
+                    <div class="stat-label">文件数量</div>
+                    <div class="stat-value">${data.fileCount || 0}</div>
+                </div>
+                <div class="storage-stat">
+                    <div class="stat-label">存储限制</div>
+                    <div class="stat-value">${limitMB > 0 ? this.formatFileSize(limitMB * 1024 * 1024) : '无限制'}</div>
+                </div>
+            </div>
+            
+            ${limitMB > 0 ? `
+            <div class="storage-progress">
+                <div class="progress-label">
+                    <span>存储使用率</span>
+                    <span>${percentage}%</span>
+                </div>
+                <div class="progress-container">
+                    <div class="${progressBarClass}" style="width: ${Math.min(percentage, 100)}%"></div>
+                </div>
+                <div class="progress-text">
+                    ${usedMB} MB / ${limitMB} MB
+                </div>
+            </div>
+            ` : ''}
+            
+            <div class="storage-actions">
+                <button class="btn btn-secondary btn-sm" onclick="adminPanel.loadStorageUsage()">刷新</button>
+                ${data.canCleanup ? '<button class="btn btn-warning btn-sm" onclick="adminPanel.cleanupStorage()">清理无效文件</button>' : ''}
+            </div>
+        `;
+    }
+
+    // 清理存储
+    async cleanupStorage() {
+        if (!confirm('确定要清理无效的文件吗？这将删除数据库中不存在记录的文件。')) {
+            return;
+        }
+
+        try {
+            const response = await fetch('/api/admin/cleanup-storage', {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${this.adminToken}`
+                }
+            });
+
+            const result = await response.json();
+
+            if (response.ok) {
+                this.showMessage(`清理完成，删除了 ${result.deletedCount || 0} 个无效文件`, 'success');
+                this.loadStorageUsage(); // 重新加载使用情况
+            } else {
+                this.showMessage(result.message || '清理失败', 'error');
+            }
+        } catch (error) {
+            console.error('清理存储失败:', error);
+            this.showMessage('清理失败，请重试', 'error');
         }
     }
 

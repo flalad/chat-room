@@ -89,7 +89,8 @@ checkAdminConfig().catch(console.error);
 const systemSettings = {
     maxFileSize: 50 * 1024 * 1024, // 50MB
     allowedFileTypes: 'image/*,video/*,audio/*,.pdf,.doc,.docx,.txt',
-    s3Config: null
+    s3Config: null,
+    storageLimit: 0 // 0 = 无限制，单位：字节
 };
 
 // JWT中间件
@@ -460,33 +461,62 @@ app.get('/api/admin/s3-config', authenticateAdmin, (req, res) => {
 
 app.post('/api/admin/s3-config', authenticateAdmin, (req, res) => {
     try {
-        const { provider, endpoint, bucket, region, accessKey, secretKey, directory } = req.body;
-
-        // 验证必填字段
-        if (!provider || !endpoint || !bucket || !region || !accessKey || !secretKey) {
-            return res.status(400).json({ message: '请填写完整的S3配置信息' });
-        }
-
-        // 保存S3配置到系统设置
-        systemSettings.s3Config = {
+        const {
             provider,
             endpoint,
             bucket,
             region,
             accessKey,
             secretKey,
+            directory,
+            storageLimit,
+            enableCDN
+        } = req.body;
+
+        // 验证必填字段
+        if (!provider || !bucket || !region || !accessKey || !secretKey) {
+            return res.status(400).json({ message: '请填写完整的S3配置信息' });
+        }
+
+        // 对于某些提供商，端点是必需的
+        const requiresEndpoint = ['cloudflare', 'minio', 'other', 'aliyun', 'tencent', 'qiniu'];
+        if (requiresEndpoint.includes(provider) && !endpoint) {
+            return res.status(400).json({ message: '该存储提供商需要填写自定义端点' });
+        }
+
+        // 设置默认端点
+        let finalEndpoint = endpoint;
+        if (!finalEndpoint && provider === 'aws') {
+            finalEndpoint = `https://s3.${region}.amazonaws.com`;
+        }
+
+        // 保存S3配置到系统设置
+        systemSettings.s3Config = {
+            provider,
+            endpoint: finalEndpoint,
+            bucket,
+            region,
+            accessKey,
+            secretKey,
             directory: directory || 'chat-files/',
+            enableCDN: enableCDN === 'on' || enableCDN === true,
             updatedAt: new Date().toISOString()
         };
+
+        // 保存存储限制
+        const limitMB = parseInt(storageLimit) || 0;
+        systemSettings.storageLimit = limitMB * 1024 * 1024; // 转换为字节
 
         res.json({
             message: 'S3配置保存成功',
             config: {
                 provider,
-                endpoint,
+                endpoint: finalEndpoint,
                 bucket,
                 region,
-                directory
+                directory: directory || 'chat-files/',
+                storageLimit: limitMB,
+                enableCDN: systemSettings.s3Config.enableCDN
             }
         });
 
@@ -616,6 +646,67 @@ app.delete('/api/admin/files/:fileId', authenticateAdmin, (req, res) => {
     }
 });
 
+// 获取存储使用情况
+app.get('/api/admin/storage-usage', authenticateAdmin, (req, res) => {
+    try {
+        const files = Array.from(uploadedFiles.values());
+        const totalUsed = files.reduce((total, file) => total + (file.size || 0), 0);
+        const fileCount = files.length;
+        const limit = systemSettings.storageLimit || 0;
+        
+        res.json({
+            used: totalUsed,
+            limit: limit,
+            fileCount: fileCount,
+            canCleanup: fileCount > 0,
+            files: files.map(file => ({
+                id: file.id,
+                size: file.size,
+                uploadTime: file.uploadTime
+            }))
+        });
+    } catch (error) {
+        console.error('获取存储使用情况错误:', error);
+        res.status(500).json({ message: '服务器内部错误' });
+    }
+});
+
+// 清理无效文件
+app.post('/api/admin/cleanup-storage', authenticateAdmin, async (req, res) => {
+    try {
+        let deletedCount = 0;
+        const filesToDelete = [];
+        
+        // 检查内存中的文件记录，找出可能无效的文件
+        for (const [fileId, fileInfo] of uploadedFiles.entries()) {
+            // 这里可以添加更复杂的清理逻辑
+            // 比如检查文件是否在消息中被引用
+            const fileAge = Date.now() - new Date(fileInfo.uploadTime).getTime();
+            const maxAge = 30 * 24 * 60 * 60 * 1000; // 30天
+            
+            // 如果文件超过30天且没有被引用，标记为可删除
+            if (fileAge > maxAge) {
+                filesToDelete.push(fileId);
+            }
+        }
+        
+        // 删除标记的文件
+        for (const fileId of filesToDelete) {
+            uploadedFiles.delete(fileId);
+            deletedCount++;
+        }
+        
+        res.json({
+            message: '存储清理完成',
+            deletedCount: deletedCount
+        });
+        
+    } catch (error) {
+        console.error('清理存储错误:', error);
+        res.status(500).json({ message: '服务器内部错误' });
+    }
+});
+
 app.delete('/api/admin/users/:userId', authenticateAdmin, async (req, res) => {
     try {
         const userId = req.params.userId;
@@ -713,13 +804,28 @@ app.get('/api/s3/config', authenticateToken, (req, res) => {
 
 app.post('/api/s3/upload-url', authenticateToken, async (req, res) => {
     try {
-        const { fileName, fileType } = req.body;
+        const { fileName, fileType, fileSize } = req.body;
         const username = req.user.username;
 
         // 使用管理员配置的S3
         const s3Config = systemSettings.s3Config;
         if (!s3Config) {
             return res.status(400).json({ message: 'S3配置未设置，请联系管理员' });
+        }
+
+        // 检查存储容量限制
+        if (systemSettings.storageLimit > 0) {
+            const currentUsage = Array.from(uploadedFiles.values()).reduce((total, file) => total + (file.size || 0), 0);
+            const requestedSize = parseInt(fileSize) || 0;
+            
+            if (currentUsage + requestedSize > systemSettings.storageLimit) {
+                const availableSpace = systemSettings.storageLimit - currentUsage;
+                return res.status(413).json({
+                    message: `存储空间不足。可用空间: ${Math.round(availableSpace / (1024 * 1024))}MB，请求大小: ${Math.round(requestedSize / (1024 * 1024))}MB`,
+                    availableSpace: availableSpace,
+                    requestedSize: requestedSize
+                });
+            }
         }
 
         // 配置AWS SDK
@@ -748,7 +854,13 @@ app.post('/api/s3/upload-url', authenticateToken, async (req, res) => {
         });
 
         // 生成文件访问URL
-        const fileUrl = `${s3Config.endpoint}/${s3Config.bucket}/${key}`;
+        let fileUrl;
+        if (s3Config.enableCDN && s3Config.provider === 'cloudflare') {
+            // Cloudflare R2 CDN URL
+            fileUrl = `https://${s3Config.bucket}.r2.dev/${key}`;
+        } else {
+            fileUrl = `${s3Config.endpoint}/${s3Config.bucket}/${key}`;
+        }
 
         // 记录文件信息
         const fileInfo = {
@@ -756,7 +868,7 @@ app.post('/api/s3/upload-url', authenticateToken, async (req, res) => {
             originalName: fileName,
             fileName: uniqueFileName,
             mimeType: fileType,
-            size: 0, // 将在上传完成后更新
+            size: parseInt(fileSize) || 0,
             url: fileUrl,
             key: key,
             uploader: username,
