@@ -63,37 +63,24 @@ class AuthManager {
         console.log('localStorage中的用户信息:', storedUser);
         console.log('localStorage中的token:', storedToken ? '存在' : '不存在');
 
-        if (storedUser && storedToken) {
+        if (storedUser) {
             try {
                 this.user = JSON.parse(storedUser);
-                this.token = storedToken;
+                this.token = storedToken; // 保存token但不验证
                 
                 console.log('解析后的用户信息:', this.user);
                 console.log('用户是否为管理员:', this.user.isAdmin || this.user.role === 'admin');
                 
-                // 验证token是否有效（包括管理员token）
-                this.verifyToken().then(isValid => {
-                    console.log('Token验证结果:', isValid);
-                    
-                    if (isValid) {
-                        this.onLoginSuccess(this.user, this.token);
-                    } else {
-                        // 如果验证失败，但是是管理员用户，尝试直接启用（兼容性处理）
-                        if (this.user.isAdmin || this.user.role === 'admin') {
-                            console.log('管理员token验证失败，但仍启用聊天功能（兼容性处理）');
-                            this.onLoginSuccess(this.user, this.token);
-                        } else {
-                            console.log('普通用户token验证失败，清除认证信息');
-                            this.clearAuth();
-                        }
-                    }
-                });
+                // 直接启用聊天功能，不验证token
+                console.log('用户已登录，直接启用聊天功能（无token验证）');
+                this.onLoginSuccess(this.user, this.token);
+                
             } catch (error) {
                 console.error('解析用户信息失败:', error);
                 this.clearAuth();
             }
         } else {
-            console.log('未找到存储的认证信息');
+            console.log('未找到存储的认证信息，需要登录');
         }
     }
 
@@ -320,9 +307,9 @@ class AuthManager {
         return this.token;
     }
 
-    // 检查是否已登录
+    // 检查是否已登录（不验证token）
     isLoggedIn() {
-        return this.user !== null && this.token !== null;
+        return this.user !== null && this.user.username !== undefined;
     }
 
     // 获取认证头

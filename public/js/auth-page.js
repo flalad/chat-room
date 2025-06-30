@@ -278,30 +278,11 @@ class AuthPage {
     checkAuthStatus() {
         // 如果已经登录，直接跳转到聊天室
         const user = localStorage.getItem('user');
-        const token = localStorage.getItem('token');
         
-        if (user && token) {
-            // 验证token是否有效
-            this.verifyToken(token).then(isValid => {
-                if (isValid) {
-                    window.location.href = '/';
-                }
-            });
-        }
-    }
-
-    async verifyToken(token) {
-        try {
-            const response = await fetch('/api/auth/verify', {
-                method: 'GET',
-                headers: {
-                    'Authorization': `Bearer ${token}`,
-                },
-            });
-            return response.ok;
-        } catch (error) {
-            console.error('Token验证失败:', error);
-            return false;
+        if (user) {
+            // 直接跳转，不验证token
+            console.log('用户已登录，直接跳转到聊天室');
+            window.location.href = '/';
         }
     }
 

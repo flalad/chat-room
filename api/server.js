@@ -230,8 +230,8 @@ app.post('/api/auth/logout', authenticateToken, (req, res) => {
     res.json({ message: '退出登录成功' });
 });
 
-// HTTP聊天API（Vercel兼容）
-app.get('/api/messages/history', authenticateToken, async (req, res) => {
+// HTTP聊天API（Vercel兼容，无需认证）
+app.get('/api/messages/history', async (req, res) => {
     try {
         const limit = parseInt(req.query.limit) || 100;
         const messages = await storage.getMessages(limit);
@@ -247,7 +247,7 @@ app.get('/api/messages/history', authenticateToken, async (req, res) => {
     }
 });
 
-app.get('/api/messages/poll', authenticateToken, async (req, res) => {
+app.get('/api/messages/poll', async (req, res) => {
     try {
         const afterId = req.query.after;
         const messages = await storage.getMessages(50);
@@ -269,10 +269,9 @@ app.get('/api/messages/poll', authenticateToken, async (req, res) => {
     }
 });
 
-app.post('/api/messages/send', authenticateToken, async (req, res) => {
+app.post('/api/messages/send', async (req, res) => {
     try {
-        const { content, type = 'text' } = req.body;
-        const username = req.user.username;
+        const { content, type = 'text', username = '匿名用户' } = req.body;
         
         if (!content || content.trim().length === 0) {
             return res.status(400).json({ message: '消息内容不能为空' });
@@ -305,7 +304,7 @@ app.post('/api/messages/send', authenticateToken, async (req, res) => {
     }
 });
 
-app.get('/api/users/online', authenticateToken, (req, res) => {
+app.get('/api/users/online', (req, res) => {
     try {
         const onlineUsers = Array.from(connectedUsers.values());
         res.json({

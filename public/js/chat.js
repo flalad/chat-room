@@ -186,6 +186,7 @@ class ChatManager {
     handleSendMessage(event) {
         event.preventDefault();
 
+        // 检查是否已登录（不验证token）
         if (!window.authManager.isLoggedIn()) {
             this.showError('请先登录');
             return;
