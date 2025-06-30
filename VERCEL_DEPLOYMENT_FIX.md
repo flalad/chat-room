@@ -106,8 +106,19 @@ vercel --prod
 
 ### 1. 环境变量
 确保在 Vercel 控制台设置必要的环境变量：
+
+#### 基础环境变量：
 - `NODE_ENV=production`
-- 其他应用所需的环境变量
+
+#### 管理员账户（推荐设置）：
+- `ADMIN_USERNAME=your_admin_username`
+- `ADMIN_PASSWORD_HASH=your_bcrypt_hashed_password`
+
+#### JWT密钥（可选，有默认值）：
+- `JWT_SECRET=your_jwt_secret_key`
+- `ADMIN_JWT_SECRET=your_admin_jwt_secret_key`
+
+如果不设置管理员环境变量，将使用默认账户：`admin/password`
 
 ### 2. 函数限制
 - Vercel 免费版本函数执行时间限制为 10 秒

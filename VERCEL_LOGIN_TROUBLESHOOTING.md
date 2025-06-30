@@ -39,15 +39,24 @@ Vercel使用Serverless函数，与传统服务器环境有以下差异：
 
 ### 2. 环境变量设置
 
-在Vercel控制台设置以下环境变量：
+根据代码中的实际配置，环境变量名称如下：
 
-#### 必需的环境变量：
+#### 管理员账户相关（推荐设置）：
 ```
-NODE_ENV=production
 ADMIN_USERNAME=your_admin_username
 ADMIN_PASSWORD_HASH=your_bcrypt_hashed_password
+```
+
+#### JWT密钥相关（可选，有默认值）：
+```
 JWT_SECRET=your_jwt_secret_key
 ADMIN_JWT_SECRET=your_admin_jwt_secret_key
+```
+
+#### 其他环境变量：
+```
+NODE_ENV=production
+PORT=3000
 ```
 
 #### 生成密码哈希：
@@ -57,11 +66,11 @@ node -e "console.log(require('bcryptjs').hashSync('your_password', 10))"
 
 ### 3. 默认管理员账户
 
-如果未设置环境变量，系统将使用默认账户：
+如果未设置 `ADMIN_USERNAME` 和 `ADMIN_PASSWORD_HASH` 环境变量，系统将使用默认账户：
 - **用户名**: `admin`
 - **密码**: `password`
 
-**⚠️ 安全警告**: 生产环境中必须更改默认密码！
+**⚠️ 安全警告**: 生产环境中建议设置自定义的管理员用户名和密码哈希！
 
 ## 部署步骤
 
