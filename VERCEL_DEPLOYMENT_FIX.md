@@ -111,6 +111,12 @@ vercel --prod
 - `NODE_ENV=production`
 
 #### 管理员账户（推荐设置）：
+
+**方式1 - 明文密码（简单）：**
+- `ADMIN_USERNAME=your_admin_username`
+- `ADMIN_PASSWORD=your_plain_password`
+
+**方式2 - 哈希密码（更安全）：**
 - `ADMIN_USERNAME=your_admin_username`
 - `ADMIN_PASSWORD_HASH=your_bcrypt_hashed_password`
 

@@ -37,16 +37,22 @@ const uploadedFiles = new Map();
 const adminConfig = {
     username: process.env.ADMIN_USERNAME || (process.env.NODE_ENV === 'production' ? null : 'admin'),
     password: process.env.ADMIN_PASSWORD_HASH || (process.env.NODE_ENV === 'production' ? null : '$2a$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi'), // 本地测试默认密码: password
+    plainPassword: process.env.ADMIN_PASSWORD || null, // 支持明文密码
 };
 
 // 检查生产环境管理员配置
-if (process.env.NODE_ENV === 'production' && (!adminConfig.username || !adminConfig.password)) {
-    console.warn('⚠️ 生产环境警告: 建议设置 ADMIN_USERNAME 和 ADMIN_PASSWORD_HASH 环境变量');
-    console.warn('请设置以下环境变量:');
+if (process.env.NODE_ENV === 'production' && (!adminConfig.username || (!adminConfig.password && !adminConfig.plainPassword))) {
+    console.warn('⚠️ 生产环境警告: 建议设置管理员账户环境变量');
+    console.warn('请设置以下环境变量之一:');
+    console.warn('');
+    console.warn('方式1 - 明文密码（简单）:');
+    console.warn('  ADMIN_USERNAME=your_admin_username');
+    console.warn('  ADMIN_PASSWORD=your_plain_password');
+    console.warn('');
+    console.warn('方式2 - 哈希密码（更安全）:');
     console.warn('  ADMIN_USERNAME=your_admin_username');
     console.warn('  ADMIN_PASSWORD_HASH=your_bcrypt_hashed_password');
-    console.warn('可以使用以下命令生成密码哈希:');
-    console.warn('  node -e "console.log(require(\'bcryptjs\').hashSync(\'your_password\', 10))"');
+    console.warn('');
     console.warn('当前使用默认管理员配置，请尽快更改！');
 }
 
@@ -205,7 +211,7 @@ app.post('/api/admin/login', async (req, res) => {
         }
 
         // 检查管理员配置是否存在
-        if (!adminConfig.username || !adminConfig.password) {
+        if (!adminConfig.username || (!adminConfig.password && !adminConfig.plainPassword)) {
             return res.status(503).json({ message: '管理员功能未配置，请联系系统管理员设置环境变量' });
         }
 
@@ -214,7 +220,16 @@ app.post('/api/admin/login', async (req, res) => {
             return res.status(401).json({ message: '管理员用户名或密码错误' });
         }
 
-        const isValidPassword = await bcrypt.compare(password, adminConfig.password);
+        // 支持明文密码和哈希密码两种方式
+        let isValidPassword = false;
+        if (adminConfig.plainPassword) {
+            // 使用明文密码验证
+            isValidPassword = (password === adminConfig.plainPassword);
+        } else if (adminConfig.password) {
+            // 使用哈希密码验证
+            isValidPassword = await bcrypt.compare(password, adminConfig.password);
+        }
+
         if (!isValidPassword) {
             return res.status(401).json({ message: '管理员用户名或密码错误' });
         }

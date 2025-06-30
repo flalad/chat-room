@@ -42,6 +42,14 @@ Vercel使用Serverless函数，与传统服务器环境有以下差异：
 根据代码中的实际配置，环境变量名称如下：
 
 #### 管理员账户相关（推荐设置）：
+
+**方式1 - 明文密码（简单易用）：**
+```
+ADMIN_USERNAME=your_admin_username
+ADMIN_PASSWORD=your_plain_password
+```
+
+**方式2 - 哈希密码（更安全）：**
 ```
 ADMIN_USERNAME=your_admin_username
 ADMIN_PASSWORD_HASH=your_bcrypt_hashed_password
