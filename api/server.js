@@ -276,7 +276,24 @@ app.get('/api/messages/poll', async (req, res) => {
 
 app.post('/api/messages/send', async (req, res) => {
     try {
-        const { content, type = 'text', username = '匿名用户', file } = req.body;
+        // 从请求头或body中获取用户信息
+        let username = req.body.username || '匿名用户';
+        
+        // 如果有认证token，尝试获取用户名
+        const authHeader = req.headers['authorization'];
+        if (authHeader && authHeader.startsWith('Bearer ')) {
+            const token = authHeader.split(' ')[1];
+            try {
+                const jwt = require('jsonwebtoken');
+                const decoded = jwt.verify(token, JWT_SECRET);
+                username = decoded.username || username;
+            } catch (jwtError) {
+                // Token无效，但不阻止消息发送，使用默认用户名
+                console.log('Token验证失败，使用默认用户名:', jwtError.message);
+            }
+        }
+        
+        const { content, type = 'text', file } = req.body;
         
         if (type === 'file') {
             // 文件消息处理

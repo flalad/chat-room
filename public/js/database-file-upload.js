@@ -52,7 +52,15 @@ class DatabaseFileUpload {
                     // 获取base64数据（去掉data:mime/type;base64,前缀）
                     const base64Data = e.target.result.split(',')[1];
                     
-                    const token = localStorage.getItem('token');
+                    // 获取认证token，优先从authManager获取
+                    let token = localStorage.getItem('token');
+                    if (!token && window.authManager && window.authManager.isLoggedIn()) {
+                        const user = window.authManager.getCurrentUser();
+                        if (user && user.token) {
+                            token = user.token;
+                        }
+                    }
+                    
                     if (!token) {
                         throw new Error('未登录，请先登录');
                     }

@@ -144,8 +144,15 @@ class EnhancedFileUploadManager {
         const fileInput = document.getElementById('fileInput');
 
         if (attachmentBtn && fileInput) {
-            attachmentBtn.addEventListener('click', () => {
-                if (!window.authManager.isLoggedIn()) {
+            // 移除可能存在的旧事件监听器
+            attachmentBtn.replaceWith(attachmentBtn.cloneNode(true));
+            const newAttachmentBtn = document.getElementById('attachmentBtn');
+            
+            newAttachmentBtn.addEventListener('click', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                
+                if (!window.authManager || !window.authManager.isLoggedIn()) {
                     this.showError('请先登录后再上传文件');
                     return;
                 }
@@ -194,6 +201,8 @@ class EnhancedFileUploadManager {
 
     handleFileSelect(event) {
         const files = Array.from(event.target.files);
+        if (files.length === 0) return;
+        
         this.handleFilesWithOptions(files);
         
         // 清空文件输入，允许重复选择同一文件
@@ -440,7 +449,7 @@ class EnhancedFileUploadManager {
             });
 
             // 上传成功，发送文件消息
-            this.sendFileMessage({
+            await this.sendFileMessage({
                 ...result,
                 storageType: 'database'
             }, uploadMessage);
@@ -454,7 +463,7 @@ class EnhancedFileUploadManager {
     // 上传到S3
     async uploadToS3(file) {
         if (!window.s3ConfigManager || !window.s3ConfigManager.isConfigured()) {
-            this.showError('S3存储未配置');
+            this.showError('S3存储未配置，无法上传大文件');
             return;
         }
 
@@ -466,7 +475,7 @@ class EnhancedFileUploadManager {
             });
 
             // 上传成功，发送文件消息
-            this.sendFileMessage({
+            await this.sendFileMessage({
                 ...result,
                 storageType: 's3'
             }, uploadMessage);
@@ -585,6 +594,13 @@ class EnhancedFileUploadManager {
 
             console.log('发送文件消息数据:', messageData);
 
+            // 获取用户名
+            let username = '匿名用户';
+            if (window.authManager && window.authManager.isLoggedIn()) {
+                const user = window.authManager.getCurrentUser();
+                username = user.username;
+            }
+
             // 通过Socket.IO发送文件消息
             if (window.chatManager && window.chatManager.socket && window.chatManager.isConnected) {
                 console.log('通过Socket.IO发送文件消息');
@@ -592,7 +608,14 @@ class EnhancedFileUploadManager {
             } else {
                 console.log('Socket未连接，尝试HTTP方式发送');
                 // 如果Socket未连接，尝试通过HTTP API发送
-                const token = localStorage.getItem('token');
+                let token = localStorage.getItem('token');
+                if (!token && window.authManager && window.authManager.isLoggedIn()) {
+                    const user = window.authManager.getCurrentUser();
+                    if (user && user.token) {
+                        token = user.token;
+                    }
+                }
+                
                 if (token) {
                     const response = await fetch('/api/messages/send', {
                         method: 'POST',
@@ -603,15 +626,22 @@ class EnhancedFileUploadManager {
                         body: JSON.stringify({
                             type: 'file',
                             content: `[文件] ${messageData.file.fileName}`,
+                            username: username,
                             file: messageData.file
                         })
                     });
 
                     if (!response.ok) {
-                        throw new Error('HTTP发送失败');
+                        const errorData = await response.json().catch(() => ({ message: 'HTTP发送失败' }));
+                        throw new Error(errorData.message || 'HTTP发送失败');
                     }
                     
                     console.log('HTTP方式发送成功');
+                    
+                    // HTTP发送成功后，手动添加消息到UI（因为没有Socket事件）
+                    if (window.chatManager) {
+                        window.chatManager.handleNewMessage(messageData);
+                    }
                 } else {
                     throw new Error('无法发送消息：未登录且Socket未连接');
                 }
@@ -761,6 +791,10 @@ class EnhancedFileUploadManager {
 
     // 设置粘贴上传功能
     setupPasteUpload() {
+        // 避免重复绑定
+        if (this.pasteEventBound) return;
+        this.pasteEventBound = true;
+        
         // 监听全局粘贴事件
         document.addEventListener('paste', (event) => {
             // 检查是否在聊天输入框或消息区域
@@ -774,7 +808,7 @@ class EnhancedFileUploadManager {
             
             // 只在聊天相关区域处理粘贴
             if (activeElement === messageText ||
-                messageList.contains(activeElement) ||
+                messageList && messageList.contains(activeElement) ||
                 activeElement === document.body) {
                 
                 this.handlePasteEvent(event);
