@@ -627,6 +627,8 @@ app.post('/api/admin/test-s3', authenticateAdmin, async (req, res) => {
 // 获取所有S3配置
 app.get('/api/admin/s3-configs', authenticateAdmin, (req, res) => {
     try {
+        console.log('获取S3配置列表请求，当前配置数量:', s3Configs.size);
+        
         const configs = Array.from(s3Configs.values()).map(config => ({
             ...config,
             // 不返回敏感信息
@@ -634,6 +636,7 @@ app.get('/api/admin/s3-configs', authenticateAdmin, (req, res) => {
             secretKey: '***'
         }));
         
+        console.log('返回配置列表:', configs.length, '个配置');
         res.json({ configs });
     } catch (error) {
         console.error('获取S3配置列表错误:', error);
@@ -661,6 +664,8 @@ app.get('/api/admin/s3-configs/:id', authenticateAdmin, (req, res) => {
 // 创建S3配置
 app.post('/api/admin/s3-configs', authenticateAdmin, (req, res) => {
     try {
+        console.log('创建S3配置请求，请求体:', { ...req.body, secretKey: '***' });
+        
         const {
             configName,
             provider,
@@ -677,12 +682,14 @@ app.post('/api/admin/s3-configs', authenticateAdmin, (req, res) => {
 
         // 验证必填字段
         if (!configName || !provider || !bucket || !region || !accessKey || !secretKey) {
+            console.log('验证失败，缺少必填字段');
             return res.status(400).json({ message: '请填写完整的S3配置信息' });
         }
 
         // 对于某些提供商，端点是必需的
         const requiresEndpoint = ['cloudflare', 'minio', 'other', 'aliyun', 'tencent', 'qiniu'];
         if (requiresEndpoint.includes(provider) && !endpoint) {
+            console.log('验证失败，该提供商需要端点');
             return res.status(400).json({ message: '该存储提供商需要填写自定义端点' });
         }
 
@@ -711,6 +718,8 @@ app.post('/api/admin/s3-configs', authenticateAdmin, (req, res) => {
             updatedAt: new Date().toISOString()
         };
 
+        console.log('创建新配置:', { ...newConfig, secretKey: '***' });
+
         // 如果设为默认，取消其他配置的默认状态
         if (newConfig.isDefault) {
             for (const [id, config] of s3Configs.entries()) {
@@ -724,6 +733,7 @@ app.post('/api/admin/s3-configs', authenticateAdmin, (req, res) => {
         }
 
         s3Configs.set(configId, newConfig);
+        console.log('配置已保存，当前配置总数:', s3Configs.size);
 
         res.json({
             message: 'S3配置创建成功',

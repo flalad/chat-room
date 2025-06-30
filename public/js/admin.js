@@ -460,22 +460,32 @@ class AdminPanel {
 
     // 加载S3配置列表
     async loadS3ConfigList() {
+        const listEl = document.getElementById('s3ConfigList');
+        
         try {
+            console.log('开始加载S3配置列表...');
+            listEl.innerHTML = '<div class="loading-spinner"></div> 正在加载存储配置...';
+            
             const response = await fetch('/api/admin/s3-configs', {
                 headers: {
                     'Authorization': `Bearer ${this.adminToken}`
                 }
             });
 
+            console.log('S3配置列表响应状态:', response.status);
+
             if (response.ok) {
                 const data = await response.json();
+                console.log('S3配置列表数据:', data);
                 this.renderS3ConfigList(data.configs || []);
             } else {
-                document.getElementById('s3ConfigList').innerHTML = '<p>加载存储配置失败</p>';
+                const errorData = await response.json().catch(() => ({ message: '未知错误' }));
+                console.error('加载S3配置列表失败:', response.status, errorData);
+                listEl.innerHTML = `<p class="error-message">加载存储配置失败: ${errorData.message}</p>`;
             }
         } catch (error) {
-            console.error('加载S3配置列表失败:', error);
-            document.getElementById('s3ConfigList').innerHTML = '<p>加载失败</p>';
+            console.error('加载S3配置列表异常:', error);
+            listEl.innerHTML = `<p class="error-message">网络错误: ${error.message}</p>`;
         }
     }
 
@@ -483,7 +493,9 @@ class AdminPanel {
     renderS3ConfigList(configs) {
         const listEl = document.getElementById('s3ConfigList');
         
-        if (configs.length === 0) {
+        console.log('渲染S3配置列表:', configs);
+        
+        if (!configs || configs.length === 0) {
             listEl.innerHTML = `
                 <div class="empty-state">
                     <div class="empty-icon">☁️</div>
@@ -494,72 +506,95 @@ class AdminPanel {
             return;
         }
 
-        listEl.innerHTML = configs.map(config => `
-            <div class="s3-config-card ${config.isDefault ? 'default' : ''}" data-config-id="${config.id}">
-                <div class="config-header">
-                    <div class="config-info">
-                        <h4 class="config-name">
-                            ${this.escapeHtml(config.configName)}
-                            ${config.isDefault ? '<span class="default-badge">默认</span>' : ''}
-                        </h4>
-                        <div class="config-details">
-                            <span class="provider-badge provider-${config.provider}">${this.getProviderName(config.provider)}</span>
-                            <span class="config-bucket">${this.escapeHtml(config.bucket)}</span>
-                            <span class="config-region">${this.escapeHtml(config.region)}</span>
+        try {
+            listEl.innerHTML = configs.map(config => {
+                // 确保所有必需的字段都存在
+                const safeConfig = {
+                    id: config.id || 'unknown',
+                    configName: config.configName || '未命名配置',
+                    provider: config.provider || 'unknown',
+                    bucket: config.bucket || '',
+                    region: config.region || '',
+                    status: config.status || 'unknown',
+                    storageLimit: config.storageLimit || 0,
+                    enableCDN: config.enableCDN || false,
+                    isDefault: config.isDefault || false,
+                    createdAt: config.createdAt || new Date().toISOString()
+                };
+                
+                return `
+                    <div class="s3-config-card ${safeConfig.isDefault ? 'default' : ''}" data-config-id="${safeConfig.id}">
+                        <div class="config-header">
+                            <div class="config-info">
+                                <h4 class="config-name">
+                                    ${this.escapeHtml(safeConfig.configName)}
+                                    ${safeConfig.isDefault ? '<span class="default-badge">默认</span>' : ''}
+                                </h4>
+                                <div class="config-details">
+                                    <span class="provider-badge provider-${safeConfig.provider}">${this.getProviderName(safeConfig.provider)}</span>
+                                    <span class="config-bucket">${this.escapeHtml(safeConfig.bucket)}</span>
+                                    <span class="config-region">${this.escapeHtml(safeConfig.region)}</span>
+                                </div>
+                            </div>
+                            <div class="config-status">
+                                <span class="status-indicator ${safeConfig.status}" title="连接状态">
+                                    ${safeConfig.status === 'connected' ? '✅' : safeConfig.status === 'error' ? '❌' : '❓'}
+                                </span>
+                            </div>
+                        </div>
+                        
+                        <div class="config-stats">
+                            <div class="stat-item">
+                                <span class="stat-label">存储限制</span>
+                                <span class="stat-value">${safeConfig.storageLimit > 0 ? this.formatFileSize(safeConfig.storageLimit * 1024 * 1024) : '无限制'}</span>
+                            </div>
+                            <div class="stat-item">
+                                <span class="stat-label">CDN加速</span>
+                                <span class="stat-value">${safeConfig.enableCDN ? '已启用' : '未启用'}</span>
+                            </div>
+                            <div class="stat-item">
+                                <span class="stat-label">创建时间</span>
+                                <span class="stat-value">${this.formatDate(safeConfig.createdAt)}</span>
+                            </div>
+                        </div>
+                        
+                        <div class="config-actions">
+                            <button class="btn btn-sm btn-secondary" onclick="adminPanel.testS3Config('${safeConfig.id}')" title="测试连接">
+                                <svg viewBox="0 0 24 24" width="14" height="14">
+                                    <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
+                                </svg>
+                                测试
+                            </button>
+                            <button class="btn btn-sm btn-primary" onclick="adminPanel.editS3Config('${safeConfig.id}')" title="编辑配置">
+                                <svg viewBox="0 0 24 24" width="14" height="14">
+                                    <path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/>
+                                </svg>
+                                编辑
+                            </button>
+                            ${!safeConfig.isDefault ? `
+                            <button class="btn btn-sm btn-success" onclick="adminPanel.setDefaultS3Config('${safeConfig.id}')" title="设为默认">
+                                <svg viewBox="0 0 24 24" width="14" height="14">
+                                    <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
+                                </svg>
+                                设为默认
+                            </button>
+                            ` : ''}
+                            <button class="btn btn-sm btn-danger" onclick="adminPanel.deleteS3Config('${safeConfig.id}')" title="删除配置">
+                                <svg viewBox="0 0 24 24" width="14" height="14">
+                                    <path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/>
+                                </svg>
+                                删除
+                            </button>
                         </div>
                     </div>
-                    <div class="config-status">
-                        <span class="status-indicator ${config.status || 'unknown'}" title="连接状态">
-                            ${config.status === 'connected' ? '✅' : config.status === 'error' ? '❌' : '❓'}
-                        </span>
-                    </div>
-                </div>
-                
-                <div class="config-stats">
-                    <div class="stat-item">
-                        <span class="stat-label">存储限制</span>
-                        <span class="stat-value">${config.storageLimit > 0 ? this.formatFileSize(config.storageLimit * 1024 * 1024) : '无限制'}</span>
-                    </div>
-                    <div class="stat-item">
-                        <span class="stat-label">CDN加速</span>
-                        <span class="stat-value">${config.enableCDN ? '已启用' : '未启用'}</span>
-                    </div>
-                    <div class="stat-item">
-                        <span class="stat-label">创建时间</span>
-                        <span class="stat-value">${this.formatDate(config.createdAt)}</span>
-                    </div>
-                </div>
-                
-                <div class="config-actions">
-                    <button class="btn btn-sm btn-secondary" onclick="adminPanel.testS3Config('${config.id}')" title="测试连接">
-                        <svg viewBox="0 0 24 24" width="14" height="14">
-                            <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
-                        </svg>
-                        测试
-                    </button>
-                    <button class="btn btn-sm btn-primary" onclick="adminPanel.editS3Config('${config.id}')" title="编辑配置">
-                        <svg viewBox="0 0 24 24" width="14" height="14">
-                            <path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/>
-                        </svg>
-                        编辑
-                    </button>
-                    ${!config.isDefault ? `
-                    <button class="btn btn-sm btn-success" onclick="adminPanel.setDefaultS3Config('${config.id}')" title="设为默认">
-                        <svg viewBox="0 0 24 24" width="14" height="14">
-                            <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
-                        </svg>
-                        设为默认
-                    </button>
-                    ` : ''}
-                    <button class="btn btn-sm btn-danger" onclick="adminPanel.deleteS3Config('${config.id}')" title="删除配置">
-                        <svg viewBox="0 0 24 24" width="14" height="14">
-                            <path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/>
-                        </svg>
-                        删除
-                    </button>
-                </div>
-            </div>
-        `).join('');
+                `;
+            }).join('');
+            
+            console.log('S3配置列表渲染完成');
+        } catch (error) {
+            console.error('渲染S3配置列表失败:', error);
+            listEl.innerHTML = `<p class="error-message">渲染配置列表失败: ${error.message}</p>`;
+        }
     }
 
     // 获取提供商显示名称
@@ -736,18 +771,29 @@ class AdminPanel {
     async saveS3Config(e) {
         e.preventDefault();
         
-        const formData = new FormData(e.target);
-        const config = Object.fromEntries(formData.entries());
-        const configId = config.configId;
-        const isEdit = configId && configId.trim() !== '';
-
-        // 验证必填字段
-        if (!config.configName || !config.provider || !config.bucket || !config.region || !config.accessKey || !config.secretKey) {
-            this.showMessage('请填写完整的配置信息', 'error');
+        // 防止重复提交
+        const submitBtn = e.target.querySelector('button[type="submit"]');
+        if (submitBtn.disabled) {
             return;
         }
-
+        
+        submitBtn.disabled = true;
+        submitBtn.textContent = '保存中...';
+        
         try {
+            const formData = new FormData(e.target);
+            const config = Object.fromEntries(formData.entries());
+            const configId = config.configId;
+            const isEdit = configId && configId.trim() !== '';
+
+            // 验证必填字段
+            if (!config.configName || !config.provider || !config.bucket || !config.region || !config.accessKey || !config.secretKey) {
+                this.showMessage('请填写完整的配置信息', 'error');
+                return;
+            }
+
+            console.log('保存S3配置:', { isEdit, configId, config: { ...config, secretKey: '***' } });
+
             const url = isEdit ? `/api/admin/s3-configs/${configId}` : '/api/admin/s3-configs';
             const method = isEdit ? 'PUT' : 'POST';
             
@@ -760,18 +806,24 @@ class AdminPanel {
                 body: JSON.stringify(config)
             });
 
+            console.log('保存响应状态:', response.status);
             const result = await response.json();
+            console.log('保存响应数据:', result);
 
             if (response.ok) {
                 this.showMessage(isEdit ? 'S3配置更新成功！' : 'S3配置保存成功！', 'success');
                 this.cancelEdit(); // 重置表单
-                this.loadS3ConfigList(); // 重新加载列表
+                await this.loadS3ConfigList(); // 重新加载列表
             } else {
                 this.showMessage(result.message || '保存失败', 'error');
             }
         } catch (error) {
             console.error('保存S3配置失败:', error);
             this.showMessage('保存失败，请重试', 'error');
+        } finally {
+            // 恢复按钮状态
+            submitBtn.disabled = false;
+            submitBtn.textContent = document.getElementById('configId').value ? '更新配置' : '保存配置';
         }
     }
 
