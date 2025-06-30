@@ -124,6 +124,7 @@
     <script src="./js/auth.js"></script>
     <script src="./js/database-file-upload.js"></script>
     <script src="./js/enhanced-file-upload.js"></script>
+    <script src="./js/s3-config.js"></script>
     
     <script>
         // 调试日志函数
@@ -316,13 +317,44 @@
         // 页面加载完成后初始化
         document.addEventListener('DOMContentLoaded', () => {
             log('调试页面已加载');
+            
+            // 初始化组件
+            try {
+                // 初始化认证管理器
+                if (typeof AuthManager !== 'undefined') {
+                    window.authManager = new AuthManager();
+                    log('✅ AuthManager 初始化成功');
+                } else {
+                    log('❌ AuthManager 类未找到');
+                }
+                
+                // 初始化S3配置管理器
+                if (typeof S3ConfigManager !== 'undefined') {
+                    window.s3ConfigManager = new S3ConfigManager();
+                    log('✅ S3ConfigManager 初始化成功');
+                } else {
+                    log('❌ S3ConfigManager 类未找到');
+                }
+                
+                // 初始化增强文件上传管理器
+                if (typeof EnhancedFileUploadManager !== 'undefined') {
+                    window.enhancedFileUploadManager = new EnhancedFileUploadManager();
+                    log('✅ EnhancedFileUploadManager 初始化成功');
+                } else {
+                    log('❌ EnhancedFileUploadManager 类未找到');
+                }
+                
+            } catch (error) {
+                log(`❌ 组件初始化错误: ${error.message}`, 'error');
+            }
+            
             setupFileUpload();
             
             // 自动检查系统状态
             setTimeout(() => {
                 checkSystemStatus();
                 checkAuth();
-            }, 1000);
+            }, 1500);
         });
     </script>
 </body>

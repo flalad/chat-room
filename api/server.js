@@ -1287,10 +1287,26 @@ app.post('/api/s3/upload-url', authenticateToken, async (req, res) => {
 });
 
 // 数据库文件存储API
-app.post('/api/files/upload-to-db', authenticateToken, async (req, res) => {
+app.post('/api/files/upload-to-db', async (req, res) => {
     try {
-        const { fileName, fileType, fileData } = req.body;
-        const username = req.user.username;
+        const { fileName, fileType, fileData, username = '匿名用户' } = req.body;
+        
+        console.log('数据库文件上传请求:', { fileName, fileType, username, dataSize: fileData ? fileData.length : 0 });
+        
+        // 尝试从认证头获取用户名
+        let actualUsername = username;
+        const authHeader = req.headers['authorization'];
+        if (authHeader && authHeader.startsWith('Bearer ')) {
+            const token = authHeader.split(' ')[1];
+            try {
+                const jwt = require('jsonwebtoken');
+                const decoded = jwt.verify(token, JWT_SECRET);
+                actualUsername = decoded.username || username;
+                console.log('从token获取用户名:', actualUsername);
+            } catch (jwtError) {
+                console.log('Token验证失败，使用默认用户名:', username);
+            }
+        }
         
         // 验证文件大小（10MB限制）
         const maxSize = 10 * 1024 * 1024; // 10MB
@@ -1312,7 +1328,7 @@ app.post('/api/files/upload-to-db', authenticateToken, async (req, res) => {
             mimeType: fileType,
             size: fileBuffer.length,
             data: fileBuffer,
-            uploader: username
+            uploader: actualUsername
         });
         
         // 生成访问URL

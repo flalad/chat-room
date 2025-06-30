@@ -231,17 +231,24 @@ class EnhancedFileUploadManager {
 
     // 为单个文件选择存储方式
     async selectStorageForFile(file) {
+        console.log('选择存储方式，文件:', file.name, '大小:', this.formatFileSize(file.size));
+        
         const eligibility = this.databaseUpload.isFileEligibleForDatabase(file);
+        console.log('数据库存储适用性:', eligibility);
         
         // 优先使用数据库存储（如果文件符合条件）
         if (eligibility.eligible) {
+            console.log('使用数据库存储');
             await this.uploadToDatabase(file);
         } else {
             // 文件不适合数据库存储，尝试使用S3
+            console.log('检查S3存储可用性');
             if (window.s3ConfigManager && window.s3ConfigManager.isConfigured()) {
+                console.log('使用S3存储');
                 await this.uploadToS3(file);
             } else {
-                this.showError('文件过大或类型不支持数据库存储，且S3存储未配置。请联系管理员配置存储服务。');
+                console.log('S3存储未配置');
+                this.showError(`文件过大（${this.formatFileSize(file.size)}）不适合数据库存储，且S3存储未配置。请联系管理员配置S3存储服务，或选择较小的文件（≤10MB）。`);
                 return;
             }
         }

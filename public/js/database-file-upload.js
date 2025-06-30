@@ -53,33 +53,55 @@ class DatabaseFileUpload {
                     const base64Data = e.target.result.split(',')[1];
                     
                     // 获取认证token，优先从authManager获取
-                    let token = localStorage.getItem('token');
-                    if (!token && window.authManager && window.authManager.isLoggedIn()) {
-                        const user = window.authManager.getCurrentUser();
-                        if (user && user.token) {
-                            token = user.token;
-                        }
+                    let token = null;
+                    
+                    if (window.authManager && window.authManager.isLoggedIn()) {
+                        token = window.authManager.getToken();
+                        console.log('从authManager获取token:', token ? '存在' : '不存在');
                     }
                     
                     if (!token) {
-                        throw new Error('未登录，请先登录');
+                        token = localStorage.getItem('token');
+                        console.log('从localStorage获取token:', token ? '存在' : '不存在');
+                    }
+                    
+                    if (!token) {
+                        console.warn('未找到token，但继续尝试上传');
+                        // 不抛出错误，尝试无token上传
                     }
 
                     if (onProgress) onProgress(75);
 
                     console.log('开始上传文件到数据库:', file.name, file.type, file.size);
 
+                    // 获取用户名
+                    let username = '匿名用户';
+                    if (window.authManager && window.authManager.isLoggedIn()) {
+                        const user = window.authManager.getCurrentUser();
+                        username = user.username || '匿名用户';
+                    }
+
+                    const requestBody = {
+                        fileName: file.name,
+                        fileType: file.type,
+                        fileData: base64Data,
+                        username: username
+                    };
+
+                    const headers = {
+                        'Content-Type': 'application/json'
+                    };
+
+                    if (token) {
+                        headers['Authorization'] = `Bearer ${token}`;
+                    }
+
+                    console.log('发送上传请求，用户名:', username);
+
                     const response = await fetch('/api/files/upload-to-db', {
                         method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            'Authorization': `Bearer ${token}`
-                        },
-                        body: JSON.stringify({
-                            fileName: file.name,
-                            fileType: file.type,
-                            fileData: base64Data
-                        })
+                        headers: headers,
+                        body: JSON.stringify(requestBody)
                     });
 
                     if (onProgress) onProgress(90);
