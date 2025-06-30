@@ -319,6 +319,22 @@ app.get('/api/users/online', authenticateToken, (req, res) => {
     }
 });
 
+// 调试API（仅在开发环境）
+app.get('/api/debug/info', (req, res) => {
+    if (process.env.NODE_ENV !== 'production') {
+        res.json({
+            environment: process.env.NODE_ENV,
+            hasJwtSecret: !!process.env.JWT_SECRET,
+            hasAdminJwtSecret: !!process.env.ADMIN_JWT_SECRET,
+            hasDatabaseUrl: !!process.env.DATABASE_URL,
+            jwtSecretLength: JWT_SECRET.length,
+            adminJwtSecretLength: ADMIN_JWT_SECRET.length
+        });
+    } else {
+        res.status(404).json({ message: 'Not found' });
+    }
+});
+
 // 管理员API路由
 app.post('/api/admin/login', async (req, res) => {
     try {
@@ -385,10 +401,13 @@ app.get('/api/admin/verify', authenticateAdmin, (req, res) => {
     });
 });
 
-app.get('/api/admin/dashboard', authenticateAdmin, (req, res) => {
+app.get('/api/admin/dashboard', authenticateAdmin, async (req, res) => {
     try {
         const onlineUsers = connectedUsers.size;
-        const todayMessages = messages.filter(msg => {
+        
+        // 从数据库获取消息
+        const allMessages = await storage.getMessages(1000);
+        const todayMessages = allMessages.filter(msg => {
             const today = new Date().toDateString();
             const msgDate = new Date(msg.timestamp).toDateString();
             return msgDate === today;
@@ -397,7 +416,7 @@ app.get('/api/admin/dashboard', authenticateAdmin, (req, res) => {
         const totalFiles = uploadedFiles.size;
         const storageUsed = Array.from(uploadedFiles.values()).reduce((total, file) => total + (file.size || 0), 0);
         
-        const recentActivities = messages.slice(-10).map(msg => ({
+        const recentActivities = allMessages.slice(-10).map(msg => ({
             timestamp: msg.timestamp,
             username: msg.username || 'System',
             action: msg.type === 'file' ? '上传文件' : '发送消息',
@@ -557,16 +576,18 @@ app.get('/api/admin/images', authenticateAdmin, (req, res) => {
     }
 });
 
-app.get('/api/admin/users', authenticateAdmin, (req, res) => {
+app.get('/api/admin/users', authenticateAdmin, async (req, res) => {
     try {
-        const userList = Array.from(users.values()).map(user => {
+        // 从数据库获取用户列表
+        const allUsers = await storage.getAllUsers();
+        const userList = allUsers.map(user => {
             const isOnline = Array.from(connectedUsers.values()).some(conn => conn.username === user.username);
             return {
                 id: user.username,
                 username: user.username,
                 email: user.email || null,
-                createdAt: user.createdAt,
-                lastLogin: user.lastLogin || null,
+                createdAt: user.createdAt || user.created_at,
+                lastLogin: user.lastLogin || user.last_login || null,
                 isOnline
             };
         });
@@ -596,13 +617,14 @@ app.delete('/api/admin/files/:fileId', authenticateAdmin, (req, res) => {
     }
 });
 
-app.delete('/api/admin/users/:userId', authenticateAdmin, (req, res) => {
+app.delete('/api/admin/users/:userId', authenticateAdmin, async (req, res) => {
     try {
         const userId = req.params.userId;
         
-        if (users.has(userId)) {
-            users.delete(userId);
-            
+        // 从数据库删除用户
+        const deleted = await storage.deleteUser(userId);
+        
+        if (deleted) {
             // 断开该用户的连接
             for (const [socketId, userData] of connectedUsers.entries()) {
                 if (userData.username === userId) {
