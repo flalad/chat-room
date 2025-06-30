@@ -848,8 +848,21 @@ class EnhancedFileUploadManager {
             this.showPasteNotification(files.length);
             
             try {
-                // 处理粘贴的文件
-                await this.handleFilesWithOptions(files);
+                // 直接处理粘贴的文件，优先使用数据库存储
+                for (const file of files) {
+                    console.log('处理粘贴文件:', file.name, file.size, file.type);
+                    
+                    // 检查文件是否适合数据库存储
+                    const eligibility = this.databaseUpload.isFileEligibleForDatabase(file);
+                    
+                    if (eligibility.eligible) {
+                        console.log('粘贴文件适合数据库存储，直接上传');
+                        await this.uploadToDatabase(file);
+                    } else {
+                        console.log('粘贴文件不适合数据库存储:', eligibility.reason);
+                        this.showError(`文件 "${file.name}" ${eligibility.reason}`);
+                    }
+                }
             } catch (error) {
                 console.error('粘贴文件处理失败:', error);
                 this.showError('粘贴文件处理失败: ' + error.message);
