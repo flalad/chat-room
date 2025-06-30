@@ -152,7 +152,11 @@ class EnhancedFileUploadManager {
                 e.preventDefault();
                 e.stopPropagation();
                 
-                // 移除登录检查，允许匿名上传（与Ctrl+V保持一致）
+                if (!window.authManager || !window.authManager.isLoggedIn()) {
+                    this.showError('请先登录后再上传文件');
+                    return;
+                }
+
                 // 直接打开文件选择器
                 fileInput.click();
             });
@@ -185,7 +189,11 @@ class EnhancedFileUploadManager {
             event.stopPropagation();
             messageList.classList.remove('drag-over');
 
-            // 移除登录检查，允许匿名上传（与Ctrl+V保持一致）
+            if (!window.authManager.isLoggedIn()) {
+                this.showError('请先登录后再上传文件');
+                return;
+            }
+
             const files = Array.from(event.dataTransfer.files);
             this.handleFilesWithOptions(files);
         });
@@ -801,7 +809,10 @@ class EnhancedFileUploadManager {
             const messageText = document.getElementById('messageText');
             const messageList = document.getElementById('messageList');
             
-            // 移除登录检查，允许匿名上传
+            if (!window.authManager || !window.authManager.isLoggedIn()) {
+                return; // 未登录时不处理粘贴
+            }
+            
             // 只在聊天相关区域处理粘贴
             if (activeElement === messageText ||
                 messageList && messageList.contains(activeElement) ||
