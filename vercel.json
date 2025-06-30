@@ -1,36 +1,22 @@
 {
   "version": 2,
   "name": "private-chat-room",
-  "builds": [
+  "rewrites": [
     {
-      "src": "server.js",
-      "use": "@vercel/node"
+      "source": "/socket.io/(.*)",
+      "destination": "/api/server"
     },
     {
-      "src": "public/**/*",
-      "use": "@vercel/static"
+      "source": "/api/(.*)",
+      "destination": "/api/server"
     }
   ],
-  "routes": [
-    {
-      "src": "/socket.io/(.*)",
-      "dest": "/server.js"
-    },
-    {
-      "src": "/api/(.*)",
-      "dest": "/server.js"
-    },
-    {
-      "src": "/(.*)",
-      "dest": "/public/$1"
-    }
-  ],
-  "env": {
-    "NODE_ENV": "production"
-  },
   "functions": {
-    "server.js": {
+    "api/server.js": {
       "maxDuration": 30
     }
+  },
+  "env": {
+    "NODE_ENV": "production"
   }
 }
