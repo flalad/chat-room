@@ -2,7 +2,7 @@
 class EnhancedFileUploadManager {
     constructor() {
         this.maxFileSize = 50 * 1024 * 1024; // 50MB
-        this.databaseMaxSize = 10 * 1024 * 1024; // 10MB for database storage
+        this.databaseMaxSize = 5 * 1024 * 1024; // 5MB for database storage
         this.allowedTypes = [
             'image/jpeg', 'image/png', 'image/gif', 'image/webp',
             'video/mp4', 'video/webm', 'video/ogg',
@@ -241,7 +241,7 @@ class EnhancedFileUploadManager {
                 await this.uploadToS3(file);
             } else {
                 console.log('S3存储未配置');
-                this.showError(`文件过大（${this.formatFileSize(file.size)}）不适合数据库存储，且S3存储未配置。请联系管理员配置S3存储服务，或选择较小的文件（≤10MB）。`);
+                this.showError(`文件过大（${this.formatFileSize(file.size)}）不适合数据库存储，且S3存储未配置。请联系管理员配置S3存储服务，或选择较小的文件（≤5MB）。`);
                 return;
             }
         }
@@ -283,7 +283,7 @@ class EnhancedFileUploadManager {
                             </div>
                             <div class="option-description">
                                 • 快速访问，无需外部依赖<br>
-                                • 适合10MB以内的文件<br>
+                                • 适合5MB以内的文件<br>
                                 • 永久保存，不会过期
                             </div>
                         </div>
@@ -366,7 +366,7 @@ class EnhancedFileUploadManager {
                             </div>
                             <div class="option-description">
                                 • 支持图片、文档、音频、视频等<br>
-                                • 文件大小限制：10MB<br>
+                                • 文件大小限制：5MB<br>
                                 • 快速访问，永久保存
                             </div>
                         </div>
@@ -578,9 +578,19 @@ class EnhancedFileUploadManager {
 
             console.log('准备发送文件消息:', fileResult);
 
+            // 获取用户名
+            let username = '匿名用户';
+            if (window.authManager && window.authManager.isLoggedIn()) {
+                const user = window.authManager.getCurrentUser();
+                username = user.username;
+            }
+            
+            console.log('发送文件消息的用户名:', username);
+
             // 发送文件消息到服务器
             const messageData = {
                 type: 'file',
+                username: username, // 添加用户名到消息数据
                 file: {
                     url: fileResult.fileUrl || fileResult.url,
                     fileName: fileResult.fileName,
@@ -594,12 +604,6 @@ class EnhancedFileUploadManager {
 
             console.log('发送文件消息数据:', messageData);
 
-            // 获取用户名
-            let username = '匿名用户';
-            if (window.authManager && window.authManager.isLoggedIn()) {
-                const user = window.authManager.getCurrentUser();
-                username = user.username;
-            }
 
             // 通过Socket.IO发送文件消息
             if (window.chatManager && window.chatManager.socket && window.chatManager.isConnected) {

@@ -21,7 +21,7 @@ const io = socketIo(server, {
 
 // 中间件
 app.use(cors());
-app.use(express.json());
+app.use(express.json({ limit: '10mb' })); // 设置JSON请求体大小限制为10MB
 app.use(express.static(path.join(__dirname, '..', 'public')));
 
 // 配置
@@ -1308,13 +1308,13 @@ app.post('/api/files/upload-to-db', async (req, res) => {
             }
         }
         
-        // 验证文件大小（10MB限制）
-        const maxSize = 10 * 1024 * 1024; // 10MB
+        // 验证文件大小（5MB限制）
+        const maxSize = 5 * 1024 * 1024; // 5MB
         const fileBuffer = Buffer.from(fileData, 'base64');
         
         if (fileBuffer.length > maxSize) {
             return res.status(413).json({
-                message: `文件太大，数据库存储限制为10MB，当前文件大小：${Math.round(fileBuffer.length / (1024 * 1024))}MB`
+                message: `文件太大，数据库存储限制为5MB，当前文件大小：${Math.round(fileBuffer.length / (1024 * 1024))}MB`
             });
         }
         

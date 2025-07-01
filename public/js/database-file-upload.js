@@ -1,7 +1,7 @@
 // 数据库文件上传组件
 class DatabaseFileUpload {
     constructor() {
-        this.maxFileSize = 10 * 1024 * 1024; // 10MB
+        this.maxFileSize = 5 * 1024 * 1024; // 5MB
         this.supportedTypes = [
             'image/jpeg', 'image/png', 'image/gif', 'image/webp',
             'application/pdf', 'text/plain', 'text/csv',
@@ -18,7 +18,7 @@ class DatabaseFileUpload {
         if (file.size > this.maxFileSize) {
             return {
                 eligible: false,
-                reason: `文件大小超过10MB限制（当前：${this.formatFileSize(file.size)}）`
+                reason: `文件大小超过5MB限制（当前：${this.formatFileSize(file.size)}）`
             };
         }
 
@@ -153,7 +153,7 @@ class DatabaseFileUpload {
                 <div class="upload-icon">📁</div>
                 <div class="upload-text">
                     <p><strong>拖拽文件到此处或点击选择</strong></p>
-                    <p class="upload-hint">支持图片、文档、音频、视频等文件，最大10MB</p>
+                    <p class="upload-hint">支持图片、文档、音频、视频等文件，最大5MB</p>
                 </div>
                 <input type="file" id="dbFileInput" multiple accept="${this.supportedTypes.join(',')}" style="display: none;">
             </div>
