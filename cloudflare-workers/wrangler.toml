@@ -1,0 +1,71 @@
+# Cloudflare Workers 配置文件
+# 复制此文件到项目根目录并根据需要修改
+
+name = "chat-room-worker"
+main = "worker.js"
+compatibility_date = "2024-01-01"
+compatibility_flags = ["nodejs_compat"]
+
+# 开发环境配置
+[env.development]
+name = "chat-room-worker-dev"
+
+# 生产环境配置
+[env.production]
+name = "chat-room-worker-prod"
+
+# D1 数据库绑定
+[[env.production.d1_databases]]
+binding = "DB"
+database_name = "chat-room-db"
+database_id = "your-database-id-here"  # 替换为实际的数据库ID
+
+[[env.development.d1_databases]]
+binding = "DB"
+database_name = "chat-room-db-dev"
+database_id = "your-dev-database-id-here"  # 替换为开发环境数据库ID
+
+# KV 存储绑定（用于文件存储）
+[[env.production.kv_namespaces]]
+binding = "CACHE"
+id = "your-kv-namespace-id-here"  # 替换为实际的KV命名空间ID
+
+[[env.development.kv_namespaces]]
+binding = "CACHE"
+id = "your-dev-kv-namespace-id-here"  # 替换为开发环境KV命名空间ID
+
+# 环境变量
+[env.production.vars]
+JWT_SECRET = "your-super-secret-jwt-key-change-in-production"
+ADMIN_USERNAME = "admin"
+ADMIN_PASSWORD = "your-admin-password"
+MAX_FILE_SIZE = "5242880"  # 5MB
+ALLOWED_ORIGINS = "https://your-domain.com,https://your-project.pages.dev"
+
+[env.development.vars]
+JWT_SECRET = "dev-jwt-secret-key"
+ADMIN_USERNAME = "admin"
+ADMIN_PASSWORD = "admin123"
+MAX_FILE_SIZE = "5242880"
+ALLOWED_ORIGINS = "http://localhost:3000,https://localhost:3000"
+
+# Durable Objects 绑定（如果需要）
+# [[env.production.durable_objects.bindings]]
+# name = "CHAT_ROOM"
+# class_name = "ChatRoom"
+
+# 资源限制
+[limits]
+cpu_ms = 50
+
+# 触发器配置
+[[triggers]]
+crons = ["0 0 * * *"]  # 每天午夜运行清理任务
+
+# 兼容性设置
+[build]
+command = ""
+
+# 部署配置
+[deploy]
+compatibility_date = "2024-01-01"
