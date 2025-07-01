@@ -1308,8 +1308,8 @@ app.post('/api/files/upload-to-db', async (req, res) => {
             }
         }
         
-        // 验证文件大小（5MB限制）
-        const maxSize = 5 * 1024 * 1024; // 5MB
+        // 验证文件大小（10MB限制）
+        const maxSize = 10 * 1024 * 1024; // 10MB
         const fileBuffer = Buffer.from(fileData, 'base64');
         
         if (fileBuffer.length > maxSize) {
