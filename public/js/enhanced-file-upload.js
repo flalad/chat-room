@@ -152,11 +152,7 @@ class EnhancedFileUploadManager {
                 e.preventDefault();
                 e.stopPropagation();
                 
-                if (!window.authManager || !window.authManager.isLoggedIn()) {
-                    this.showError('请先登录后再上传文件');
-                    return;
-                }
-
+                // 移除登录检查，允许匿名上传（与Ctrl+V保持一致）
                 // 直接打开文件选择器
                 fileInput.click();
             });
@@ -189,10 +185,7 @@ class EnhancedFileUploadManager {
             event.stopPropagation();
             messageList.classList.remove('drag-over');
 
-            if (!window.authManager.isLoggedIn()) {
-                this.showError('请先登录后再上传文件');
-                return;
-            }
+            // 移除登录检查，允许匿名上传（与Ctrl+V和上传按钮保持一致）
 
             const files = Array.from(event.dataTransfer.files);
             this.handleFilesWithOptions(files);
@@ -809,7 +802,8 @@ class EnhancedFileUploadManager {
             const messageText = document.getElementById('messageText');
             const messageList = document.getElementById('messageList');
             
-            // 移除登录检查，允许匿名粘贴上传
+            // 移除登录检查，允许匿名粘贴上传（与其他上传方式保持一致）
+            
             // 只在聊天相关区域处理粘贴
             if (activeElement === messageText ||
                 messageList && messageList.contains(activeElement) ||
@@ -845,21 +839,8 @@ class EnhancedFileUploadManager {
             this.showPasteNotification(files.length);
             
             try {
-                // 直接处理粘贴的文件，优先使用数据库存储
-                for (const file of files) {
-                    console.log('处理粘贴文件:', file.name, file.size, file.type);
-                    
-                    // 检查文件是否适合数据库存储
-                    const eligibility = this.databaseUpload.isFileEligibleForDatabase(file);
-                    
-                    if (eligibility.eligible) {
-                        console.log('粘贴文件适合数据库存储，直接上传');
-                        await this.uploadToDatabase(file);
-                    } else {
-                        console.log('粘贴文件不适合数据库存储:', eligibility.reason);
-                        this.showError(`文件 "${file.name}" ${eligibility.reason}`);
-                    }
-                }
+                // 处理粘贴的文件
+                await this.handleFilesWithOptions(files);
             } catch (error) {
                 console.error('粘贴文件处理失败:', error);
                 this.showError('粘贴文件处理失败: ' + error.message);
